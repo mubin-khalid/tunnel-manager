@@ -1,6 +1,6 @@
 [package]
 name = "tunnel-manager"
-version = "0.1.0"
+version = "0.1.1"
 description = "Tunnel Manager"
 authors = ["Mubin"]
 edition = "2021"
