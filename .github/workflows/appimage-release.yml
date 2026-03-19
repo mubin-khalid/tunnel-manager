@@ -1,7 +1,7 @@
 name: Release (Linux AppImage)
 
 on:
-  workflow_dispatch:
+  push:
 
 jobs:
   build:
@@ -31,16 +31,15 @@ jobs:
           corepack enable
           pnpm install --frozen-lockfile
 
-      - name: Build + create GitHub Release
+      - name: Build + publish GitHub Release
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: tunnel-manager-v__VERSION__
-          releaseName: Tunnel Manager v__VERSION__
-          releaseBody: Automated build from GitHub Actions.
-          releaseDraft: true
+          tagName: tunnel-manager-linux-appimage-v__VERSION__-${{ github.sha }}
+          releaseName: Tunnel Manager Linux AppImage v__VERSION__ (${{ github.sha }})
+          releaseBody: Automated AppImage build from GitHub Actions.
+          releaseDraft: false
           prerelease: false
-          # Builds whatever Linux artifacts are configured in `src-tauri/tauri.conf.json` (`bundle.targets`).
-          args: ''
+          args: '--bundles appimage'
 
