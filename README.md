@@ -1,7 +1,8 @@
 ![Tauri](https://img.shields.io/badge/Tauri-2.0-24C8DB?logo=tauri&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB)
 ![ngrok](https://img.shields.io/badge/ngrok-tunnel-1F1E37?logo=ngrok&logoColor=white)
-![Platform](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple)
+![macOS](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple)
+![Linux](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black)
 
 # Tunnel Manager
 
