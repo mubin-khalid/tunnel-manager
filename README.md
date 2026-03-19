@@ -92,6 +92,13 @@ tunnels:
 
 Download the DMG from Releases and open it like any other macOS app.
 
+> [!CAUTION]
+> If macOS shows *“Tunnel Manager can’t be opened because Apple cannot check it for malware” or "App is damaged" etc* (Gatekeeper quarantine), remove the quarantine attribute and try again.
+>
+> ```bash
+> xattr -dr com.apple.quarantine "/Applications/Tunnel Manager.app"
+> ```
+
 **Option B — Build locally**
 ```bash
 pnpm tauri dev       # development
@@ -99,7 +106,17 @@ pnpm tauri build     # produce macOS bundles (including DMG)
 ```
 
 ---
+### Troubleshooting macOS quarantine
 
+If macOS blocks the app with Gatekeeper quarantine errors, run:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Tunnel Manager.app"
+```
+
+If your `.app` is located somewhere else (or has a different name), update the path accordingly.
+
+---
 ## Usage
 
 1. Open the app
