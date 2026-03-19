@@ -16,6 +16,10 @@ dist
 dist-ssr
 *.local
 
+# pnpm store/caches (local, should not be committed)
+.pnpm-store/
+.pnpm/
+
 # Tauri/Rust build artifacts
 target/
 src-tauri/target/
