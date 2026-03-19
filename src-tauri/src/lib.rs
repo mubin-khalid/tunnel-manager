@@ -140,6 +140,45 @@ fn resolve_ngrok_executable() -> Option<std::path::PathBuf> {
     candidates.into_iter().find(|p| is_executable(p))
 }
 
+fn kill_any_existing_ngrok_processes() -> Result<(), String> {
+    // If there is an existing ngrok agent running outside of our managed process state,
+    // ngrok may reject new agents with ERR_NGROK_108 (single concurrent agent limit).
+    //
+    // We attempt to kill any running `ngrok` processes before starting a new one.
+    let output = Command::new("pgrep")
+        .args(["-x", "ngrok"])
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if !output.status.success() {
+        // pgrep returns non-zero when no processes match; that's fine.
+        return Ok(());
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let pids: Vec<String> = stdout
+        .split_whitespace()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    if pids.is_empty() {
+        return Ok(());
+    }
+
+    for pid in &pids {
+        let status = Command::new("kill")
+            .args(["-9", pid])
+            .status()
+            .map_err(|e| e.to_string())?;
+        if !status.success() {
+            return Err(format!("Failed to kill ngrok process pid={}", pid));
+        }
+    }
+
+    Ok(())
+}
+
 fn app_settings_path() -> std::path::PathBuf {
     // Store ngrok-manager settings under `~/.config/ngrok-manager/settings.json`
     // (dirs::config_dir() differs on macOS and may point to `~/Library/...`).
@@ -412,6 +451,9 @@ fn start_ngrok(state: State<NgrokProcess>) -> Result<(), String> {
         return Err("ngrok is already running".to_string());
     }
 
+    // Ensure there isn't another ngrok agent running (even if we don't manage it).
+    kill_any_existing_ngrok_processes()?;
+
     let ngrok_path = resolve_ngrok_executable()
         .ok_or_else(|| "ngrok is not installed. Install it first.".to_string())?;
 
@@ -471,6 +513,15 @@ fn stop_ngrok(state: State<NgrokProcess>) -> Result<(), String> {
     let mut proc = state.0.lock().map_err(|e| e.to_string())?;
     if let Some(mut child) = proc.take() {
         child.kill().map_err(|e| e.to_string())?;
+
+        // Avoid race conditions with ngrok single-agent-session limits.
+        // Give the process a moment to fully exit before we allow a restart.
+        for _ in 0..15 {
+            if let Ok(Some(_)) = child.try_wait() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
     }
     Ok(())
 }

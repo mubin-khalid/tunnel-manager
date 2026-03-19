@@ -1,0 +1,248 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import type { DashboardTunnel, TunnelEntry } from "@/types";
+import {
+  DashboardHeader,
+  DashboardControlBar,
+  DashboardActiveTunnelsCard,
+  DashboardEmptyState,
+  DashboardWaitingState,
+  DashboardAuthWarningCard,
+  type DashboardTunnelViewModel,
+} from "@/components";
+
+export type DashboardPageProps = {
+  running: boolean;
+  setRunning: (v: boolean) => void;
+  ngrokInstalled: boolean;
+  hasAuthtoken: boolean;
+};
+
+const stripUrl = (url: string) =>
+  url
+    .replace(/^https?:\/\//i, "")
+    .split("/")[0]
+    .trim();
+
+const capitalize = (s: string) => (s.length ? s[0].toUpperCase() + s.slice(1) : s);
+
+const normalizeHost = (h: string) =>
+  h
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//i, "")
+    .split("/")[0]
+    .split(":")[0]
+    .trim();
+
+const normalizeAddr = (addr: string) => {
+  // Extract host (no scheme, no port) from URL-ish values like:
+  // - http://cosmetics-squad-app.test:80
+  // - http://localhost:3000/
+  const a = addr.trim();
+  const withoutScheme = a.replace(/^[a-z]+:\/\//i, "");
+  const hostPort = withoutScheme.split("/")[0].toLowerCase();
+  return hostPort.split(":")[0].trim();
+};
+
+const formatTunnelName = (publicUrl: string) => {
+  const host = stripUrl(publicUrl);
+  const base = host.split(".")[0] ?? host;
+  const withoutAppSuffix = base.replace(/-app$/i, "");
+  return withoutAppSuffix
+    .split("-")
+    .filter(Boolean)
+    .map(capitalize)
+    .join(" ");
+};
+
+export default function DashboardPage({
+  running,
+  setRunning,
+  ngrokInstalled,
+  hasAuthtoken,
+}: DashboardPageProps) {
+  const [tunnels, setTunnels] = useState<DashboardTunnel[]>([]);
+  const [savedTunnels, setSavedTunnels] = useState<Record<string, TunnelEntry>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchTunnels = useCallback(async () => {
+    try {
+      const data = await invoke<DashboardTunnel[]>("fetch_running_tunnels");
+      setTunnels(data);
+      setError("");
+    } catch {
+      setTunnels([]);
+    }
+  }, []);
+
+  const fetchSavedTunnels = useCallback(async () => {
+    try {
+      const data = await invoke<Record<string, TunnelEntry>>("read_tunnels");
+      setSavedTunnels(data ?? {});
+    } catch {
+      setSavedTunnels({});
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    fetchSavedTunnels();
+  }, [fetchSavedTunnels]);
+
+  useEffect(() => {
+    if (running) {
+      fetchTunnels();
+      const interval = setInterval(fetchTunnels, 3000);
+      return () => clearInterval(interval);
+    }
+    setTunnels([]);
+    setCopied(null);
+  }, [running, fetchTunnels]);
+
+  const handleStart = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      await invoke("start_ngrok");
+      setRunning(true);
+      setTimeout(fetchTunnels, 1500);
+    } catch (e: any) {
+      setError(e?.toString() ?? "Failed to start ngrok");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStop = async () => {
+    setLoading(true);
+    try {
+      await invoke("stop_ngrok");
+      setRunning(false);
+      setTunnels([]);
+    } catch (e: any) {
+      setError(e?.toString() ?? "Failed to stop ngrok");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyUrl = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(url);
+      if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
+      copiedTimeoutRef.current = setTimeout(() => setCopied(null), 1800);
+    } catch {
+      setError("Failed to copy URL (clipboard permission denied).");
+    }
+  };
+
+  const displayTunnels = useMemo(() => {
+    return tunnels
+      .filter(
+        (t) =>
+          t.proto === "https" ||
+          !tunnels.find((x) => x.proto === "https" && x.config.addr === t.config.addr)
+      )
+      .slice()
+      .sort((a, b) => a.public_url.localeCompare(b.public_url));
+  }, [tunnels]);
+
+  const items: DashboardTunnelViewModel[] = useMemo(() => {
+    const resolveName = (t: DashboardTunnel) => {
+      const destinationHost = normalizeAddr(t.config.addr);
+      const tProto = t.proto.toLowerCase();
+
+      const isWeb = tProto === "https" || tProto === "http";
+      const isTcp = tProto === "tcp";
+
+      const fallback = formatTunnelName(t.public_url);
+
+      for (const [name, entry] of Object.entries(savedTunnels)) {
+        const entryProto = (entry.proto ?? "").toLowerCase();
+        if (isTcp && entryProto !== "tcp") continue;
+        if (isWeb && entryProto !== "http" && entryProto !== "tls") continue;
+
+        if (normalizeAddr(entry.addr) !== destinationHost) continue;
+
+        // host_header is optional, but when present it should match destination too.
+        if (entry.host_header?.trim()) {
+          if (normalizeHost(entry.host_header) !== destinationHost) continue;
+        }
+
+        return name;
+      }
+
+      // Nothing matched; fall back to derived name.
+      return fallback;
+    };
+
+    return displayTunnels.map((t) => {
+      return {
+        key: `${t.proto}:${t.public_url}`,
+        name: resolveName(t),
+        proto: t.proto.toLowerCase(),
+        configAddr: t.config.addr,
+        publicUrl: t.public_url,
+      };
+    });
+  }, [displayTunnels, savedTunnels]);
+
+  return (
+    <div className="w-full h-full p-8">
+      <div className="max-w-3xl mx-auto">
+        <DashboardHeader />
+
+        <DashboardControlBar
+          running={running}
+          loading={loading}
+          ngrokInstalled={ngrokInstalled}
+          hasAuthtoken={hasAuthtoken}
+          tunnelCount={items.length}
+          onStart={handleStart}
+          onStop={handleStop}
+        />
+
+        {error ? (
+          <div
+            className="bg-red-500/10 border border-red-500/30 text-danger rounded-md px-[14px] py-[10px] text-[13px] mb-3.5"
+            role="alert"
+          >
+            {error}
+          </div>
+        ) : null}
+
+        {!ngrokInstalled || (ngrokInstalled && !hasAuthtoken) ? (
+          <DashboardAuthWarningCard ngrokInstalled={ngrokInstalled} hasAuthtoken={hasAuthtoken} />
+        ) : null}
+
+        {running ? (
+          items.length === 0 ? (
+            <DashboardWaitingState />
+          ) : (
+            <DashboardActiveTunnelsCard
+              items={items}
+              copiedUrl={copied}
+              running={running}
+              disabled={loading}
+              onCopy={copyUrl}
+            />
+          )
+        ) : (
+          <DashboardEmptyState />
+        )}
+      </div>
+    </div>
+  );
+}
+
