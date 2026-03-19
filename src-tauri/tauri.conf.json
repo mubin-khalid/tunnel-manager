@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Tunnel Manager",
+  "version": "0.1.0",
+  "identifier": "com.mk.ngrok-manager",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Tunnel Manager",
+        "width": 920,
+        "height": 640,
+        "minWidth": 780,
+        "minHeight": 540,
+        "resizable": true,
+        "closable": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true
+      }
+    ],
+    "trayIcon": {
+      "iconPath": "icons/32x32.png",
+      "iconAsTemplate": true
+    },
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
