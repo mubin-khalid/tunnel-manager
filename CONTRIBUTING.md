@@ -69,7 +69,7 @@ cd src-tauri && cargo check       # Rust compilation
 
 ## Project Structure
 
-```
+```text
 src/                  # React frontend
   components/         # UI components grouped by domain
   pages/              # Page-level components (Dashboard, Tunnels, Settings)
