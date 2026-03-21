@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
+use serde_yaml::Value as YamlValue;
 use std::collections::HashMap;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
-use serde_yaml::Value as YamlValue;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -44,26 +44,19 @@ impl Default for NgrokConfig {
     fn default() -> Self {
         NgrokConfig {
             version: "3".to_string(),
-            agent: AgentConfig { authtoken: "".to_string() },
+            agent: AgentConfig {
+                authtoken: "".to_string(),
+            },
             tunnels: HashMap::new(),
         }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct AppSettings {
     pub auto_start: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authtoken: Option<String>,
-}
-
-impl Default for AppSettings {
-    fn default() -> Self {
-        AppSettings {
-            auto_start: false,
-            authtoken: None,
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -183,7 +176,9 @@ fn app_settings_path() -> std::path::PathBuf {
     // Store ngrok-manager settings under `~/.config/ngrok-manager/settings.json`
     // (dirs::config_dir() differs on macOS and may point to `~/Library/...`).
     let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-    home.join(".config").join("ngrok-manager").join("settings.json")
+    home.join(".config")
+        .join("ngrok-manager")
+        .join("settings.json")
 }
 
 fn legacy_app_settings_path() -> std::path::PathBuf {
@@ -230,13 +225,11 @@ fn migrate_settings_and_cleanup() -> Result<(), String> {
                 if let YamlValue::Mapping(map) = &mut root {
                     let agent_key = YamlValue::String("agent".to_string());
                     let authtoken_key = YamlValue::String("authtoken".to_string());
-                    if let Some(agent_val) = map.get_mut(&agent_key) {
-                        if let YamlValue::Mapping(agent_map) = agent_val {
-                            agent_map.remove(&authtoken_key);
-                            // If agent becomes empty, remove it entirely to avoid leaving stale token placeholders.
-                            if agent_map.is_empty() {
-                                map.remove(&agent_key);
-                            }
+                    if let Some(YamlValue::Mapping(agent_map)) = map.get_mut(&agent_key) {
+                        agent_map.remove(&authtoken_key);
+                        // If agent becomes empty, remove it entirely to avoid leaving stale token placeholders.
+                        if agent_map.is_empty() {
+                            map.remove(&agent_key);
                         }
                     }
 
@@ -288,13 +281,10 @@ fn migrate_settings_and_cleanup() -> Result<(), String> {
                         YamlValue::String("version".to_string()),
                         YamlValue::String(version),
                     );
-                    root.insert(
-                        YamlValue::String("tunnels".to_string()),
-                        tunnels_value,
-                    );
+                    root.insert(YamlValue::String("tunnels".to_string()), tunnels_value);
 
-                    let out =
-                        serde_yaml::to_string(&YamlValue::Mapping(root)).map_err(|e| e.to_string())?;
+                    let out = serde_yaml::to_string(&YamlValue::Mapping(root))
+                        .map_err(|e| e.to_string())?;
 
                     if let Some(parent) = new_ngrok_cfg.parent() {
                         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
@@ -421,7 +411,9 @@ fn update_tunnels(tunnels: HashMap<String, TunnelEntry>) -> Result<(), String> {
     match &mut root {
         YamlValue::Mapping(map) => {
             // Preserve existing `version` if present; otherwise default to "3".
-            let has_version = map.keys().any(|k| matches!(k, YamlValue::String(s) if s == "version"));
+            let has_version = map
+                .keys()
+                .any(|k| matches!(k, YamlValue::String(s) if s == "version"));
             if !has_version {
                 map.insert(
                     YamlValue::String("version".to_string()),
@@ -433,7 +425,10 @@ fn update_tunnels(tunnels: HashMap<String, TunnelEntry>) -> Result<(), String> {
         _ => {
             root = YamlValue::Mapping({
                 let mut map = serde_yaml::Mapping::new();
-                map.insert(YamlValue::String("version".to_string()), YamlValue::String("3".to_string()));
+                map.insert(
+                    YamlValue::String("version".to_string()),
+                    YamlValue::String("3".to_string()),
+                );
                 map.insert(YamlValue::String("tunnels".to_string()), tunnels_value);
                 map
             });
@@ -528,7 +523,10 @@ fn ngrok_status(state: State<NgrokProcess>) -> bool {
     if let Some(child) = proc.as_mut() {
         match child.try_wait() {
             Ok(None) => true,
-            Ok(Some(_)) => { *proc = None; false }
+            Ok(Some(_)) => {
+                *proc = None;
+                false
+            }
             Err(_) => false,
         }
     } else {
@@ -589,7 +587,8 @@ pub fn run() {
                         button: MouseButton::Left,
                         button_state: MouseButtonState::Up,
                         ..
-                    } = event {
+                    } = event
+                    {
                         let app = tray.app_handle();
                         if let Some(win) = app.get_webview_window("main") {
                             let _ = win.show();
