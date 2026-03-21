@@ -3,8 +3,8 @@
 ![ngrok](https://img.shields.io/badge/ngrok-tunnel-1F1E37?logo=ngrok&logoColor=white)
 ![macOS](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple)
 ![Linux](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black)
-![AppImage build](https://img.shields.io/github/actions/workflow/status/mubin-khalid/tunnel-manager/appimage-release.yml?branch=main&label=AppImage%20build)
-![DMG build](https://img.shields.io/github/actions/workflow/status/mubin-khalid/tunnel-manager/dmg-release.yml?branch=main&label=DMG%20build)
+![AppImage build](https://img.shields.io/github/actions/workflow/status/mubin-khalid/tunnel-manager/build-appimage.yml?branch=main&label=AppImage%20build)
+![DMG build](https://img.shields.io/github/actions/workflow/status/mubin-khalid/tunnel-manager/build-dmg.yml?branch=main&label=DMG%20build)
 
 # Tunnel Manager
 
