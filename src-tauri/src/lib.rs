@@ -52,20 +52,11 @@ impl Default for NgrokConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct AppSettings {
     pub auto_start: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authtoken: Option<String>,
-}
-
-impl Default for AppSettings {
-    fn default() -> Self {
-        AppSettings {
-            auto_start: false,
-            authtoken: None,
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -234,13 +225,11 @@ fn migrate_settings_and_cleanup() -> Result<(), String> {
                 if let YamlValue::Mapping(map) = &mut root {
                     let agent_key = YamlValue::String("agent".to_string());
                     let authtoken_key = YamlValue::String("authtoken".to_string());
-                    if let Some(agent_val) = map.get_mut(&agent_key) {
-                        if let YamlValue::Mapping(agent_map) = agent_val {
-                            agent_map.remove(&authtoken_key);
-                            // If agent becomes empty, remove it entirely to avoid leaving stale token placeholders.
-                            if agent_map.is_empty() {
-                                map.remove(&agent_key);
-                            }
+                    if let Some(YamlValue::Mapping(agent_map)) = map.get_mut(&agent_key) {
+                        agent_map.remove(&authtoken_key);
+                        // If agent becomes empty, remove it entirely to avoid leaving stale token placeholders.
+                        if agent_map.is_empty() {
+                            map.remove(&agent_key);
                         }
                     }
 
