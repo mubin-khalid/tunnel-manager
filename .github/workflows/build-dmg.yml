@@ -1,21 +1,15 @@
-name: Release (macOS DMG)
+name: Build macOS DMG
 
 on:
-  push:
-    branches:
-      - main
-
-concurrency:
-  group: tunnel-manager-release
-  cancel-in-progress: false
+  release:
+    types: [created]
 
 jobs:
-  build:
+  build-dmg:
     permissions:
       contents: write
     strategy:
       fail-fast: false
-      max-parallel: 1
       matrix:
         include:
           - platform: macos-latest
@@ -44,15 +38,10 @@ jobs:
           corepack enable
           pnpm install --frozen-lockfile
 
-      - name: Build + publish GitHub Release
+      - name: Build and upload DMG
         uses: tauri-apps/tauri-action@action-v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v-__VERSION__
-          releaseName: Tunnel Manager v__VERSION__
-          releaseBody: Automated DMG build from GitHub Actions.
-          releaseDraft: false
-          prerelease: false
+          releaseId: ${{ github.event.release.id }}
           args: '--bundles dmg --target ${{ matrix.target }}'
-
