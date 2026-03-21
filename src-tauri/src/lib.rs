@@ -514,14 +514,10 @@ fn stop_ngrok(state: State<NgrokProcess>) -> Result<(), String> {
     if let Some(mut child) = proc.take() {
         child.kill().map_err(|e| e.to_string())?;
 
-        // Avoid race conditions with ngrok single-agent-session limits.
-        // Give the process a moment to fully exit before we allow a restart.
-        for _ in 0..15 {
-            if let Ok(Some(_)) = child.try_wait() {
-                break;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(100));
-        }
+        // Reap the process so it doesn't become a zombie on Unix.
+        // wait() blocks until the kernel confirms the process is fully gone,
+        // which also eliminates the race condition with ngrok's single-agent-session limit.
+        child.wait().ok();
     }
     Ok(())
 }
