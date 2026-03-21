@@ -1,4 +1,5 @@
 import { Check, Plus } from "lucide-react";
+import { useTunnels } from "@/contexts/TunnelContext";
 
 interface Props {
   showForm: boolean;
@@ -17,6 +18,10 @@ export default function TunnelsHeader({
   actionDisabled,
   onAdd,
 }: Props) {
+  const { enabledTunnels, definitions } = useTunnels();
+  const totalCount = Object.keys(definitions).length;
+  const enabledCount = enabledTunnels.filter((n) => n in definitions).length;
+
   return (
     <div className="flex items-start justify-between mb-7">
       <div>
@@ -27,7 +32,22 @@ export default function TunnelsHeader({
             ~/.config/ngrok-manager/ngrok.yml
           </code>
         </p>
+
+        {totalCount > 0 && (
+          <div className="flex items-center gap-3 mt-2">
+            <span className="font-mono text-[12px] text-muted-foreground">
+              <span className="text-foreground font-medium">{enabledCount}</span>
+              <span> / {totalCount} enabled</span>
+            </span>
+            {enabledCount >= 3 && (
+              <span className="text-[11px] text-warning inline-flex items-center gap-1">
+                ⚠ Free plan: max 3 active tunnels at once
+              </span>
+            )}
+          </div>
+        )}
       </div>
+
       <div className="flex items-center gap-3 shrink-0">
         {saved && (
           <span className="text-[12px] text-primary font-mono animate-fadein inline-flex items-center gap-2">
@@ -58,4 +78,3 @@ export default function TunnelsHeader({
     </div>
   );
 }
-
