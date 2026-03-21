@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import type { DashboardTunnel, TunnelEntry } from "@/types";
 import {
   DashboardHeader,
@@ -153,6 +154,16 @@ export default function DashboardPage({
     }
   };
 
+  const openTunnelUrl = useCallback(async (url: string) => {
+    try {
+      await openUrl(url);
+      setError("");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg || "Failed to open URL in browser.");
+    }
+  }, []);
+
   const displayTunnels = useMemo(() => {
     return tunnels
       .filter(
@@ -231,7 +242,7 @@ export default function DashboardPage({
             copiedUrl={copied}
             disabled={false}
             onCopy={copyUrl}
-            onOpen={(url: string) => window.open(url, "_blank", "noopener,noreferrer")}
+            onOpen={openTunnelUrl}
           />
         )}
 
