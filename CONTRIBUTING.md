@@ -44,9 +44,10 @@ Run all of these and fix any issues:
 
 ```bash
 pnpm build                        # TypeScript + Vite build
-cd src-tauri && cargo fmt --check # Rust formatting
-cd src-tauri && cargo clippy      # Rust lints
-cd src-tauri && cargo check       # Rust compilation
+cd src-tauri &&
+cargo fmt --check &&              # Rust formatting
+cargo clippy &&                   # Rust lints
+cargo check                       # Rust compilation
 ```
 
 ---
