@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { AppSettings } from "@/types";
+import { toErrorString } from "@/utils/error";
 import { AuthtokenCard, PreferencesCard, SaveRow, SettingsErrorBanner, SettingsHeader } from "@/components";
 
 export default function SettingsPage() {
@@ -47,8 +48,8 @@ export default function SettingsPage() {
       setSaved(true);
       if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
       savedTimeoutRef.current = setTimeout(() => setSaved(false), 2500);
-    } catch (e: any) {
-      setError(e?.toString() ?? "Failed to save settings");
+    } catch (e: unknown) {
+      setError(toErrorString(e) ?? "Failed to save settings");
     } finally {
       setSaving(false);
     }

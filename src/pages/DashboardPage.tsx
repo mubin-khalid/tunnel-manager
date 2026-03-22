@@ -11,47 +11,14 @@ import {
   DashboardAuthWarningCard,
   type DashboardTunnelViewModel,
 } from "@/components";
+import { toErrorString } from "@/utils/error";
+import { formatTunnelName, normalizeAddr, normalizeHost } from "@/utils/tunnel";
 
 export type DashboardPageProps = {
   running: boolean;
   setRunning: (v: boolean) => void;
   ngrokInstalled: boolean;
   hasAuthtoken: boolean;
-};
-
-const stripUrl = (url: string) =>
-  url
-    .replace(/^https?:\/\//i, "")
-    .split("/")[0]
-    .trim();
-
-const capitalize = (s: string) => (s.length ? s[0].toUpperCase() + s.slice(1) : s);
-
-const normalizeHost = (h: string) =>
-  h
-    .trim()
-    .toLowerCase()
-    .replace(/^https?:\/\//i, "")
-    .split("/")[0]
-    .split(":")[0]
-    .trim();
-
-const normalizeAddr = (addr: string) => {
-  const a = addr.trim();
-  const withoutScheme = a.replace(/^[a-z]+:\/\//i, "");
-  const hostPort = withoutScheme.split("/")[0].toLowerCase();
-  return hostPort.split(":")[0].trim();
-};
-
-const formatTunnelName = (publicUrl: string) => {
-  const host = stripUrl(publicUrl);
-  const base = host.split(".")[0] ?? host;
-  const withoutAppSuffix = base.replace(/-app$/i, "");
-  return withoutAppSuffix
-    .split("-")
-    .filter(Boolean)
-    .map(capitalize)
-    .join(" ");
 };
 
 export default function DashboardPage({
@@ -123,8 +90,8 @@ export default function DashboardPage({
       await invoke("start_ngrok");
       setRunning(true);
       setTimeout(fetchTunnels, 1500);
-    } catch (e: any) {
-      setError(e?.toString() ?? "Failed to start ngrok");
+    } catch (e: unknown) {
+      setError(toErrorString(e) ?? "Failed to start ngrok");
     } finally {
       setLoading(false);
     }
@@ -136,8 +103,8 @@ export default function DashboardPage({
       await invoke("stop_ngrok");
       setRunning(false);
       setTunnels([]);
-    } catch (e: any) {
-      setError(e?.toString() ?? "Failed to stop ngrok");
+    } catch (e: unknown) {
+      setError(toErrorString(e) ?? "Failed to stop ngrok");
     } finally {
       setLoading(false);
     }
