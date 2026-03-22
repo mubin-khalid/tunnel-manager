@@ -1,6 +1,7 @@
 import { Pencil, Trash2 } from "lucide-react";
 import type { TunnelEntry } from "@/types";
 import StatusDot from "@/components/ui/StatusDot";
+import { useTunnels } from "@/contexts/TunnelContext";
 
 interface Props {
   name: string;
@@ -18,18 +19,22 @@ const protoStyles: Record<string, { badge: string; badgeText: string }> = {
 };
 
 export default function TunnelRow({ name, entry, disabled, running, onEdit, onDelete }: Props) {
+  const { enabledTunnels, toggleTunnel, definitions } = useTunnels();
   const proto = entry.proto?.toLowerCase() ?? "http";
   const styles = protoStyles[proto] ?? protoStyles.http;
+
+  const isEnabled = enabledTunnels.includes(name);
+  const enabledCount = enabledTunnels.filter((n) => n in definitions).length;
+  const atLimit = enabledCount >= 3 && !isEnabled;
 
   return (
     <div className="flex items-start justify-between gap-3 py-4 transition-colors duration-150 hover:bg-muted/20">
       <div className="flex items-start gap-3 flex-1 min-w-0">
-        {/* Align dot with the first line (name/proto) */}
         <StatusDot
-          running={running}
+          running={running && isEnabled}
           variant="row"
           className="mt-[7px] shrink-0"
-          title={running ? "Active" : "Inactive"}
+          title={running && isEnabled ? "Active" : "Inactive"}
         />
 
         <div className="flex-1 min-w-0">
@@ -48,37 +53,62 @@ export default function TunnelRow({ name, entry, disabled, running, onEdit, onDe
 
           <div className="mt-2 font-mono text-[12px] text-muted-foreground flex items-center gap-2 min-w-0">
             {entry.host_header ? (
-              <>
-                <span className="truncate">{entry.host_header}</span>
-                <span className="opacity-60">→</span>
-              </>
-            ) : null}
-            <code className="truncate min-w-0">{entry.addr}</code>
+              <span className="truncate">{entry.host_header} → {entry.addr}</span>
+            ) : (
+              <span className="truncate">{entry.addr}</span>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-2 shrink-0 mt-[3px]">
+        {/* Enable / disable toggle */}
         <button
-          className="w-9 h-9 rounded-md border border-border2 bg-muted/20 text-muted-foreground hover:bg-muted/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+          role="switch"
+          aria-checked={isEnabled}
+          onClick={() => !disabled && toggleTunnel(name)}
+          disabled={disabled || (atLimit && !isEnabled)}
+          title={
+            atLimit && !isEnabled
+              ? "Free plan: max 3 active tunnels"
+              : isEnabled
+              ? "Disable tunnel"
+              : "Enable tunnel"
+          }
+          className={[
+            "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+            isEnabled ? "bg-primary" : "bg-border2",
+            disabled || (atLimit && !isEnabled) ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
+          ].join(" ")}
+        >
+          <span
+            className={[
+              "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200",
+              isEnabled ? "translate-x-4" : "translate-x-0",
+            ].join(" ")}
+          />
+        </button>
+
+        <button
+          className="w-8 h-8 rounded-md border border-border2 bg-muted/20 text-muted-foreground hover:bg-muted/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 transition-colors duration-150 focus-visible:outline-none flex items-center justify-center"
           onClick={onEdit}
           disabled={disabled}
-          title="Edit"
-          aria-label="Edit"
+          title="Edit tunnel"
+          aria-label="Edit tunnel"
         >
-          <Pencil size={16} className="mx-auto" />
+          <Pencil size={13} />
         </button>
+
         <button
-          className="w-9 h-9 rounded-md border border-red-500/30 bg-red-500/5 text-danger hover:bg-red-500/10 hover:border-red-500/40 disabled:cursor-not-allowed disabled:opacity-50 transition-colors duration-150 focus-visible:outline-none"
+          className="w-8 h-8 rounded-md border border-border2 bg-muted/20 text-muted-foreground hover:bg-red-500/10 hover:text-danger hover:border-red-500/30 disabled:cursor-not-allowed disabled:opacity-50 transition-colors duration-150 focus-visible:outline-none flex items-center justify-center"
           onClick={onDelete}
           disabled={disabled}
-          title="Delete"
-          aria-label="Delete"
+          title="Delete tunnel"
+          aria-label="Delete tunnel"
         >
-          <Trash2 size={16} className="mx-auto" />
+          <Trash2 size={13} />
         </button>
       </div>
     </div>
   );
 }
-

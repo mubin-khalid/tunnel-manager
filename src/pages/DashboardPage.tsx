@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import type { DashboardTunnel, TunnelEntry } from "@/types";
 import {
   DashboardHeader,
@@ -36,9 +37,6 @@ const normalizeHost = (h: string) =>
     .trim();
 
 const normalizeAddr = (addr: string) => {
-  // Extract host (no scheme, no port) from URL-ish values like:
-  // - http://cosmetics-squad-app.test:80
-  // - http://localhost:3000/
   const a = addr.trim();
   const withoutScheme = a.replace(/^[a-z]+:\/\//i, "");
   const hostPort = withoutScheme.split("/")[0].toLowerCase();
@@ -80,10 +78,19 @@ export default function DashboardPage({
     }
   }, []);
 
+  // Only keep enabled tunnel definitions — used for the "no tunnels" guard
+  // and for resolving display names on the dashboard.
   const fetchSavedTunnels = useCallback(async () => {
     try {
-      const data = await invoke<Record<string, TunnelEntry>>("read_tunnels");
-      setSavedTunnels(data ?? {});
+      const [defs, settings] = await Promise.all([
+        invoke<Record<string, TunnelEntry>>("get_tunnel_definitions"),
+        invoke<{ enabled_tunnels?: string[] }>("read_settings"),
+      ]);
+      const enabled = settings.enabled_tunnels ?? [];
+      const enabledDefs = Object.fromEntries(
+        Object.entries(defs ?? {}).filter(([name]) => enabled.includes(name))
+      );
+      setSavedTunnels(enabledDefs);
     } catch {
       setSavedTunnels({});
     }
@@ -147,6 +154,16 @@ export default function DashboardPage({
     }
   };
 
+  const openTunnelUrl = useCallback(async (url: string) => {
+    try {
+      await openUrl(url);
+      setError("");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg || "Failed to open URL in browser.");
+    }
+  }, []);
+
   const displayTunnels = useMemo(() => {
     return tunnels
       .filter(
@@ -175,7 +192,6 @@ export default function DashboardPage({
 
         if (normalizeAddr(entry.addr) !== destinationHost) continue;
 
-        // host_header is optional, but when present it should match destination too.
         if (entry.host_header?.trim()) {
           if (normalizeHost(entry.host_header) !== destinationHost) continue;
         }
@@ -183,25 +199,31 @@ export default function DashboardPage({
         return name;
       }
 
-      // Nothing matched; fall back to derived name.
       return fallback;
     };
 
-    return displayTunnels.map((t) => {
-      return {
-        key: `${t.proto}:${t.public_url}`,
-        name: resolveName(t),
-        proto: t.proto.toLowerCase(),
-        configAddr: t.config.addr,
-        publicUrl: t.public_url,
-      };
-    });
+    return displayTunnels.map((t) => ({
+      key: t.public_url,
+      name: resolveName(t),
+      proto: t.proto,
+      configAddr: t.config.addr,
+      publicUrl: t.public_url,
+    }));
   }, [displayTunnels, savedTunnels]);
+
+  const hasEnabledTunnels = Object.keys(savedTunnels).length > 0;
 
   return (
     <div className="w-full h-full p-8">
       <div className="max-w-3xl mx-auto">
         <DashboardHeader />
+        <DashboardAuthWarningCard ngrokInstalled={ngrokInstalled} hasAuthtoken={hasAuthtoken} />
+
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 text-danger rounded-md px-3.5 py-2.5 text-[13px] mb-4" role="alert">
+            {error}
+          </div>
+        )}
 
         <DashboardControlBar
           running={running}
@@ -213,36 +235,21 @@ export default function DashboardPage({
           onStop={handleStop}
         />
 
-        {error ? (
-          <div
-            className="bg-red-500/10 border border-red-500/30 text-danger rounded-md px-[14px] py-[10px] text-[13px] mb-3.5"
-            role="alert"
-          >
-            {error}
-          </div>
-        ) : null}
-
-        {!ngrokInstalled || (ngrokInstalled && !hasAuthtoken) ? (
-          <DashboardAuthWarningCard ngrokInstalled={ngrokInstalled} hasAuthtoken={hasAuthtoken} />
-        ) : null}
-
-        {running ? (
-          items.length === 0 ? (
-            <DashboardWaitingState />
-          ) : (
-            <DashboardActiveTunnelsCard
-              items={items}
-              copiedUrl={copied}
-              running={running}
-              disabled={loading}
-              onCopy={copyUrl}
-            />
-          )
-        ) : (
-          <DashboardEmptyState />
+        {running && items.length > 0 && (
+          <DashboardActiveTunnelsCard
+            items={items}
+            running={running}
+            copiedUrl={copied}
+            disabled={false}
+            onCopy={copyUrl}
+            onOpen={openTunnelUrl}
+          />
         )}
+
+        {running && items.length === 0 && <DashboardWaitingState />}
+
+        {!running && !hasEnabledTunnels && <DashboardEmptyState />}
       </div>
     </div>
   );
 }
-

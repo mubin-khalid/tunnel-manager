@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { TunnelEntry } from "@/types";
+import { useTunnels } from "@/contexts/TunnelContext";
 import {
   ConfirmModal,
   TunnelsAuthWarningCard,
@@ -29,7 +30,8 @@ type PendingTunnelUpdate = {
 };
 
 export default function TunnelsPage({ ngrokInstalled, hasAuthtoken, running, setRunning }: TunnelsPageProps) {
-  const [tunnels, setTunnels] = useState<Record<string, TunnelEntry>>({});
+  const { definitions, saveDefinitions } = useTunnels();
+
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editingName, setEditingName] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -45,16 +47,7 @@ export default function TunnelsPage({ ngrokInstalled, hasAuthtoken, running, set
 
   const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const tunnelList = useMemo(() => Object.entries(tunnels), [tunnels]);
-
-  useEffect(() => {
-    invoke<Record<string, TunnelEntry>>("read_tunnels")
-      .then((t) => setTunnels(t ?? {}))
-      .catch((e: any) => {
-        setError(e?.toString() ?? "Failed to load tunnels");
-        setTunnels({});
-      });
-  }, []);
+  const tunnelList = useMemo(() => Object.entries(definitions), [definitions]);
 
   useEffect(() => {
     if (!canEdit) {
@@ -85,8 +78,7 @@ export default function TunnelsPage({ ngrokInstalled, hasAuthtoken, running, set
           await new Promise((r) => setTimeout(r, 1200));
         }
 
-        await invoke("update_tunnels", { tunnels: updated });
-        setTunnels(updated);
+        await saveDefinitions(updated);
 
         if (restartNgrok) {
           const shouldStart = Object.keys(updated).length > 0;
@@ -106,7 +98,6 @@ export default function TunnelsPage({ ngrokInstalled, hasAuthtoken, running, set
         }
         return true;
       } catch (e: any) {
-        // If we were restarting, we already stopped ngrok. Make sure the UI matches.
         if (restartNgrok) setRunning(false);
         setFieldErrors({});
         setError(
@@ -118,7 +109,7 @@ export default function TunnelsPage({ ngrokInstalled, hasAuthtoken, running, set
         setSaving(false);
       }
     },
-    [setRunning, triggerSaved]
+    [saveDefinitions, setRunning, triggerSaved]
   );
 
   const openRestartConfirm = useCallback((updated: Record<string, TunnelEntry>, closeForm: boolean) => {
@@ -131,10 +122,7 @@ export default function TunnelsPage({ ngrokInstalled, hasAuthtoken, running, set
     const addrMissing = form.addr.trim().length === 0;
 
     if (nameMissing || addrMissing) {
-      setFieldErrors({
-        name: nameMissing,
-        addr: addrMissing,
-      });
+      setFieldErrors({ name: nameMissing, addr: addrMissing });
       if (nameMissing && addrMissing) setError("Tunnel name and local address are required");
       else if (nameMissing) setError("Tunnel name is required");
       else setError("Local address is required");
@@ -150,9 +138,7 @@ export default function TunnelsPage({ ngrokInstalled, hasAuthtoken, running, set
     setFieldErrors({});
 
     const nextName = form.name.trim();
-    // Prevent accidental overwrites when saving a new tunnel with an existing name,
-    // or when renaming an edited tunnel to an existing name.
-    if (tunnels[nextName] && nextName !== editingName) {
+    if (definitions[nextName] && nextName !== editingName) {
       setFieldErrors({ name: true });
       setError("A tunnel with this name already exists. Use a different name.");
       return;
@@ -164,7 +150,7 @@ export default function TunnelsPage({ ngrokInstalled, hasAuthtoken, running, set
       ...(form.host_header?.trim() ? { host_header: form.host_header.trim() } : {}),
     };
 
-    const updated = { ...tunnels };
+    const updated = { ...definitions };
     if (editingName && editingName !== nextName) delete updated[editingName];
     updated[nextName] = entry;
 
@@ -190,10 +176,9 @@ export default function TunnelsPage({ ngrokInstalled, hasAuthtoken, running, set
       return;
     }
 
-    const updated = { ...tunnels };
+    const updated = { ...definitions };
     delete updated[name];
 
-    // If the user deletes the tunnel they are currently editing, close the form too.
     const shouldCloseForm = showForm && editingName === name;
 
     if (running) {
@@ -258,7 +243,7 @@ export default function TunnelsPage({ ngrokInstalled, hasAuthtoken, running, set
 
         {tunnelList.length > 0 ? (
           <TunnelsList
-            tunnels={tunnels}
+            tunnels={definitions}
             disabled={actionDisabled}
             running={running}
             onEdit={handleEdit}
@@ -290,4 +275,3 @@ export default function TunnelsPage({ ngrokInstalled, hasAuthtoken, running, set
     </div>
   );
 }
-

@@ -57,6 +57,8 @@ pub struct AppSettings {
     pub auto_start: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authtoken: Option<String>,
+    #[serde(default)]
+    pub enabled_tunnels: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -81,6 +83,13 @@ fn ngrok_config_path() -> std::path::PathBuf {
     // We also pass `--config` to ngrok when starting, so ngrok uses this file.
     let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
     home.join(".config").join("ngrok-manager").join("ngrok.yml")
+}
+
+fn tunnel_definitions_path() -> std::path::PathBuf {
+    let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+    home.join(".config")
+        .join("ngrok-manager")
+        .join("tunnel-definitions.json")
 }
 
 fn is_executable(path: &std::path::Path) -> bool {
@@ -296,6 +305,32 @@ fn migrate_settings_and_cleanup() -> Result<(), String> {
         }
     }
 
+    // 4) Migrate tunnel definitions from ngrok.yml -> tunnel-definitions.json (run once).
+    let definitions_path = tunnel_definitions_path();
+    if !definitions_path.exists() {
+        let ngrok_cfg = ngrok_config_path();
+        if ngrok_cfg.exists() {
+            let content = std::fs::read_to_string(&ngrok_cfg).unwrap_or_default();
+            if !content.trim().is_empty() {
+                if let Ok(parsed) = serde_yaml::from_str::<NgrokYamlConfig>(&content) {
+                    if !parsed.tunnels.is_empty() {
+                        // Write tunnel-definitions.json
+                        if let Some(parent) = definitions_path.parent() {
+                            let _ = std::fs::create_dir_all(parent);
+                        }
+                        if let Ok(out) = serde_json::to_string_pretty(&parsed.tunnels) {
+                            let _ = std::fs::write(&definitions_path, out);
+                        }
+                        // Enable all tunnels by default
+                        let mut settings = read_settings();
+                        settings.enabled_tunnels = parsed.tunnels.keys().cloned().collect();
+                        let _ = write_settings(settings);
+                    }
+                }
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -440,6 +475,39 @@ fn update_tunnels(tunnels: HashMap<String, TunnelEntry>) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn get_tunnel_definitions() -> Result<HashMap<String, TunnelEntry>, String> {
+    let path = tunnel_definitions_path();
+    if !path.exists() {
+        return Ok(HashMap::new());
+    }
+    let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    if content.trim().is_empty() {
+        return Ok(HashMap::new());
+    }
+    serde_json::from_str(&content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn update_tunnel_definitions(tunnels: HashMap<String, TunnelEntry>) -> Result<(), String> {
+    if resolve_ngrok_executable().is_none() {
+        return Err("ngrok is not installed. Install it first.".to_string());
+    }
+    let token = authtoken_from_settings().ok_or_else(|| {
+        "ngrok authtoken is missing. Please set it in Settings first.".to_string()
+    })?;
+    if token.trim().is_empty() {
+        return Err("ngrok authtoken is missing. Please set it in Settings first.".to_string());
+    }
+
+    let path = tunnel_definitions_path();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let content = serde_json::to_string_pretty(&tunnels).map_err(|e| e.to_string())?;
+    std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn start_ngrok(state: State<NgrokProcess>) -> Result<(), String> {
     let mut proc = state.0.lock().map_err(|e| e.to_string())?;
     if proc.is_some() {
@@ -459,7 +527,47 @@ fn start_ngrok(state: State<NgrokProcess>) -> Result<(), String> {
         return Err("ngrok authtoken is missing. Please set it in Settings first.".to_string());
     }
 
-    ensure_ngrok_config_exists()?;
+    // Guard: no enabled tunnels → block start
+    let settings = read_settings();
+    let enabled: std::collections::HashSet<String> =
+        settings.enabled_tunnels.iter().cloned().collect();
+
+    if enabled.is_empty() {
+        return Err(
+            "No tunnels are enabled. Enable at least one tunnel before starting.".to_string(),
+        );
+    }
+
+    // Generate ngrok.yml from enabled tunnel definitions only
+    let definitions = get_tunnel_definitions()?;
+    let active_tunnels: HashMap<String, TunnelEntry> = definitions
+        .into_iter()
+        .filter(|(name, _)| enabled.contains(name))
+        .collect();
+
+    if active_tunnels.is_empty() {
+        return Err(
+            "No enabled tunnels found in definitions. Add and enable at least one tunnel."
+                .to_string(),
+        );
+    }
+
+    // Write the generated ngrok.yml
+    {
+        let path = ngrok_config_path();
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        let tunnels_value = serde_yaml::to_value(&active_tunnels).map_err(|e| e.to_string())?;
+        let mut map = serde_yaml::Mapping::new();
+        map.insert(
+            YamlValue::String("version".to_string()),
+            YamlValue::String("3".to_string()),
+        );
+        map.insert(YamlValue::String("tunnels".to_string()), tunnels_value);
+        let out = serde_yaml::to_string(&YamlValue::Mapping(map)).map_err(|e| e.to_string())?;
+        std::fs::write(&path, out).map_err(|e| e.to_string())?;
+    }
 
     // Prevent ngrok from immediately exiting when there are no tunnels configured.
     let ngrok_cfg_path = ngrok_config_path();
@@ -612,6 +720,8 @@ pub fn run() {
             write_settings,
             read_tunnels,
             update_tunnels,
+            get_tunnel_definitions,
+            update_tunnel_definitions,
             start_ngrok,
             stop_ngrok,
             ngrok_status,
