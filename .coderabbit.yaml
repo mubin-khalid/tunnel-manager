@@ -1,0 +1,44 @@
+language: en-US
+
+reviews:
+  profile: chill          # assertive = more comments, chill = focused on real issues
+  request_changes_workflow: false   # don't block merges on minor suggestions
+  high_level_summary: true
+  poem: false             # disables the poem it adds (personal preference)
+  review_status: true
+  collapse_walkthrough: false
+
+  auto_review:
+    enabled: true
+    drafts: false         # don't review draft PRs automatically
+    base_branches:
+      - main
+
+  path_filters:
+    - "!pnpm-lock.yaml"   # never review lockfiles
+    - "!src-tauri/Cargo.lock"
+    - "!**/target/**"
+    - "!dist/**"
+
+  path_instructions:
+    - path: "src-tauri/src/**/*.rs"
+      instructions: |
+        Review for Rust best practices.
+        Flag any use of unwrap() in tauri command handlers — they should return Result<_, String>.
+        Check that child processes are properly reaped after kill().
+        Conventional commits format is required.
+
+    - path: "src/**/*.tsx"
+      instructions: |
+        Review for React best practices.
+        Flag catch (e: any) — should use unknown and narrow the type.
+        No hardcoded color hex values — use CSS variables or Tailwind tokens.
+        Components should be under 150 lines.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        Check that release workflows only trigger on release created, not push to main.
+        CI workflow should only trigger on pull_request.
+
+chat:
+  auto_reply: true        # lets CodeRabbit respond to your comments in reviews

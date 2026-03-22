@@ -7,9 +7,16 @@ interface Props {
   title?: string;
 }
 
-export default function StatusDot({ running, variant, className, title }: Props) {
+export default function StatusDot({
+  running,
+  variant,
+  className,
+  title,
+}: Props) {
   const base =
-    variant === "sidebar" ? "size-2 rounded-full transition-colors" : "w-2 h-2 rounded-full";
+    variant === "sidebar"
+      ? "size-2 rounded-full transition-colors"
+      : "w-2 h-2 rounded-full";
 
   const status =
     variant === "sidebar"
@@ -17,11 +24,14 @@ export default function StatusDot({ running, variant, className, title }: Props)
         ? "bg-primary animate-pulse"
         : "bg-muted-foreground"
       : running
-      ? "bg-[#2d6a3f] shadow-[0_0_0_4px_rgba(45,106,63,0.25)]"
-      : "bg-[#6a6a6a] shadow-none opacity-90";
+        ? "bg-primary shadow-[0_0_0_4px_rgba(0,211,127,0.25)]"
+        : "bg-muted-foreground shadow-none opacity-90";
 
   return (
-    <span className={[base, status, className].filter(Boolean).join(" ")} title={title} aria-hidden="true" />
+    <span
+      className={[base, status, className].filter(Boolean).join(" ")}
+      title={title}
+      aria-hidden="true"
+    />
   );
 }
-

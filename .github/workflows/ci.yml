@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for frontend changes
+        id: frontend-changes
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '\.tsx?$|\.css$|\.html$|vite\.config|tailwind|postcss|package\.json' || true)
+          echo "changed=$( [ -n "$CHANGED" ] && echo 'true' || echo 'false' )" >> $GITHUB_OUTPUT
+
+      - name: Setup Node
+        if: steps.frontend-changes.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Install frontend dependencies
+        if: steps.frontend-changes.outputs.changed == 'true'
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        if: steps.frontend-changes.outputs.changed == 'true'
+        run: pnpm build
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for Rust changes
+        id: rust-changes
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '\.rs$|Cargo\.toml$|Cargo\.lock$' || true)
+          echo "changed=$( [ -n "$CHANGED" ] && echo 'true' || echo 'false' )" >> $GITHUB_OUTPUT
+
+      - name: Install Rust toolchain
+        if: steps.rust-changes.outputs.changed == 'true'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Install system dependencies
+        if: steps.rust-changes.outputs.changed == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: cargo fmt
+        if: steps.rust-changes.outputs.changed == 'true'
+        run: cargo fmt --check
+        working-directory: src-tauri
+
+      - name: cargo clippy
+        if: steps.rust-changes.outputs.changed == 'true'
+        run: cargo clippy -- -D warnings
+        working-directory: src-tauri
+
+      - name: cargo check
+        if: steps.rust-changes.outputs.changed == 'true'
+        run: cargo check
+        working-directory: src-tauri

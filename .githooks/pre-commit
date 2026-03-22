@@ -1,0 +1,9 @@
+#!/bin/sh
+
+echo "Running cargo fmt..."
+cd src-tauri && cargo fmt
+
+# Stage any files cargo fmt changed
+git add src-tauri/src/
+
+echo "cargo fmt check passed."

@@ -1,16 +1,11 @@
-name: Release (Linux AppImage)
+name: Build Linux AppImage
 
 on:
-  push:
-    branches:
-      - main
-
-concurrency:
-  group: tunnel-manager-release
-  cancel-in-progress: false
+  release:
+    types: [created]
 
 jobs:
-  build:
+  build-appimage:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -37,15 +32,28 @@ jobs:
           corepack enable
           pnpm install --frozen-lockfile
 
-      - name: Build + publish GitHub Release
+      - name: Build and upload AppImage
         uses: tauri-apps/tauri-action@action-v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v-__VERSION__
-          releaseName: Tunnel Manager v__VERSION__
-          releaseBody: Automated AppImage build from GitHub Actions.
-          releaseDraft: false
-          prerelease: false
+          releaseId: ${{ github.event.release.id }}
           args: '--bundles appimage'
+```
 
+---
+
+**What to delete:** remove `.github/workflows/dmg-release.yml` and `.github/workflows/appimage-release.yml` — they're fully replaced by the 3 new files above.
+
+---
+
+**How the flow works now:**
+```
+push to main
+    → release.yml runs
+        → reads version from package.json
+        → extracts that version's section from CHANGELOG.md
+        → creates a DRAFT release with the changelog as the release body
+            → triggers build-dmg.yml   (2 matrix jobs, arm64 + x64)
+            → triggers build-appimage.yml
+                → both upload their artifacts to the same draft release

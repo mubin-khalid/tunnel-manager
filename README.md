@@ -3,8 +3,8 @@
 ![ngrok](https://img.shields.io/badge/ngrok-tunnel-1F1E37?logo=ngrok&logoColor=white)
 ![macOS](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple)
 ![Linux](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black)
-![AppImage build](https://img.shields.io/github/actions/workflow/status/mubin-khalid/tunnel-manager/appimage-release.yml?branch=main&label=AppImage%20build)
-![DMG build](https://img.shields.io/github/actions/workflow/status/mubin-khalid/tunnel-manager/dmg-release.yml?branch=main&label=DMG%20build)
+![AppImage build](https://img.shields.io/github/actions/workflow/status/mubin-khalid/tunnel-manager/build-appimage.yml?branch=main&label=AppImage%20build)
+![DMG build](https://img.shields.io/github/actions/workflow/status/mubin-khalid/tunnel-manager/build-dmg.yml?branch=main&label=DMG%20build)
 
 # Tunnel Manager
 
@@ -36,6 +36,9 @@ Tunnel Manager wraps those steps in a simple UI and stores settings under your u
 | **Settings** | Save your `ngrok` authtoken and optionally auto-start on launch |
 
 ---
+## Screenshots
+
+<!-- TODO: add after feat/tunnel-enable-disable is merged -->
 
 ## How it works
 
@@ -71,6 +74,11 @@ Tunnel Manager stores config in:
 | `auto_start` | boolean | Start ngrok automatically when the app launches |
 | `authtoken` | string | Your ngrok authtoken (optional) |
 
+> [!WARNING]
+> The `authtoken` is stored as plaintext in `settings.json`. Treat this file
+> like a password — do not commit it, share it, or expose it in logs.
+> On macOS, ensure the file permissions are restricted (`chmod 600 ~/.config/ngrok-manager/settings.json`).
+
 ### `ngrok.yml`
 
 The app expects ngrok v3 style YAML:
@@ -85,6 +93,15 @@ tunnels:
 > Supported `proto` values: `http`, `tcp`, `tls`. `host_header` is optional.
 
 ---
+
+## Platform Support
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| macOS (arm64) | ✅ Supported | Primary target |
+| macOS (x64) | ✅ Supported | |
+| Linux (AppImage) | ✅ Supported | |
+| Windows | ❌ Not supported | Binary resolver and process management rely on Unix conventions |
 
 ## Installation
 

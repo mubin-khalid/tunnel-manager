@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
+use serde_yaml::Value as YamlValue;
 use std::collections::HashMap;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
-use serde_yaml::Value as YamlValue;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -44,26 +44,21 @@ impl Default for NgrokConfig {
     fn default() -> Self {
         NgrokConfig {
             version: "3".to_string(),
-            agent: AgentConfig { authtoken: "".to_string() },
+            agent: AgentConfig {
+                authtoken: "".to_string(),
+            },
             tunnels: HashMap::new(),
         }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct AppSettings {
     pub auto_start: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authtoken: Option<String>,
-}
-
-impl Default for AppSettings {
-    fn default() -> Self {
-        AppSettings {
-            auto_start: false,
-            authtoken: None,
-        }
-    }
+    #[serde(default)]
+    pub enabled_tunnels: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -88,6 +83,13 @@ fn ngrok_config_path() -> std::path::PathBuf {
     // We also pass `--config` to ngrok when starting, so ngrok uses this file.
     let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
     home.join(".config").join("ngrok-manager").join("ngrok.yml")
+}
+
+fn tunnel_definitions_path() -> std::path::PathBuf {
+    let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+    home.join(".config")
+        .join("ngrok-manager")
+        .join("tunnel-definitions.json")
 }
 
 fn is_executable(path: &std::path::Path) -> bool {
@@ -183,7 +185,9 @@ fn app_settings_path() -> std::path::PathBuf {
     // Store ngrok-manager settings under `~/.config/ngrok-manager/settings.json`
     // (dirs::config_dir() differs on macOS and may point to `~/Library/...`).
     let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-    home.join(".config").join("ngrok-manager").join("settings.json")
+    home.join(".config")
+        .join("ngrok-manager")
+        .join("settings.json")
 }
 
 fn legacy_app_settings_path() -> std::path::PathBuf {
@@ -230,13 +234,11 @@ fn migrate_settings_and_cleanup() -> Result<(), String> {
                 if let YamlValue::Mapping(map) = &mut root {
                     let agent_key = YamlValue::String("agent".to_string());
                     let authtoken_key = YamlValue::String("authtoken".to_string());
-                    if let Some(agent_val) = map.get_mut(&agent_key) {
-                        if let YamlValue::Mapping(agent_map) = agent_val {
-                            agent_map.remove(&authtoken_key);
-                            // If agent becomes empty, remove it entirely to avoid leaving stale token placeholders.
-                            if agent_map.is_empty() {
-                                map.remove(&agent_key);
-                            }
+                    if let Some(YamlValue::Mapping(agent_map)) = map.get_mut(&agent_key) {
+                        agent_map.remove(&authtoken_key);
+                        // If agent becomes empty, remove it entirely to avoid leaving stale token placeholders.
+                        if agent_map.is_empty() {
+                            map.remove(&agent_key);
                         }
                     }
 
@@ -288,19 +290,42 @@ fn migrate_settings_and_cleanup() -> Result<(), String> {
                         YamlValue::String("version".to_string()),
                         YamlValue::String(version),
                     );
-                    root.insert(
-                        YamlValue::String("tunnels".to_string()),
-                        tunnels_value,
-                    );
+                    root.insert(YamlValue::String("tunnels".to_string()), tunnels_value);
 
-                    let out =
-                        serde_yaml::to_string(&YamlValue::Mapping(root)).map_err(|e| e.to_string())?;
+                    let out = serde_yaml::to_string(&YamlValue::Mapping(root))
+                        .map_err(|e| e.to_string())?;
 
                     if let Some(parent) = new_ngrok_cfg.parent() {
                         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
                     }
                     std::fs::write(&new_ngrok_cfg, out).map_err(|e| e.to_string())?;
                     break;
+                }
+            }
+        }
+    }
+
+    // 4) Migrate tunnel definitions from ngrok.yml -> tunnel-definitions.json (run once).
+    let definitions_path = tunnel_definitions_path();
+    if !definitions_path.exists() {
+        let ngrok_cfg = ngrok_config_path();
+        if ngrok_cfg.exists() {
+            let content = std::fs::read_to_string(&ngrok_cfg).unwrap_or_default();
+            if !content.trim().is_empty() {
+                if let Ok(parsed) = serde_yaml::from_str::<NgrokYamlConfig>(&content) {
+                    if !parsed.tunnels.is_empty() {
+                        // Write tunnel-definitions.json
+                        if let Some(parent) = definitions_path.parent() {
+                            let _ = std::fs::create_dir_all(parent);
+                        }
+                        if let Ok(out) = serde_json::to_string_pretty(&parsed.tunnels) {
+                            let _ = std::fs::write(&definitions_path, out);
+                        }
+                        // Enable all tunnels by default
+                        let mut settings = read_settings();
+                        settings.enabled_tunnels = parsed.tunnels.keys().cloned().collect();
+                        let _ = write_settings(settings);
+                    }
                 }
             }
         }
@@ -421,7 +446,9 @@ fn update_tunnels(tunnels: HashMap<String, TunnelEntry>) -> Result<(), String> {
     match &mut root {
         YamlValue::Mapping(map) => {
             // Preserve existing `version` if present; otherwise default to "3".
-            let has_version = map.keys().any(|k| matches!(k, YamlValue::String(s) if s == "version"));
+            let has_version = map
+                .keys()
+                .any(|k| matches!(k, YamlValue::String(s) if s == "version"));
             if !has_version {
                 map.insert(
                     YamlValue::String("version".to_string()),
@@ -433,7 +460,10 @@ fn update_tunnels(tunnels: HashMap<String, TunnelEntry>) -> Result<(), String> {
         _ => {
             root = YamlValue::Mapping({
                 let mut map = serde_yaml::Mapping::new();
-                map.insert(YamlValue::String("version".to_string()), YamlValue::String("3".to_string()));
+                map.insert(
+                    YamlValue::String("version".to_string()),
+                    YamlValue::String("3".to_string()),
+                );
                 map.insert(YamlValue::String("tunnels".to_string()), tunnels_value);
                 map
             });
@@ -442,6 +472,39 @@ fn update_tunnels(tunnels: HashMap<String, TunnelEntry>) -> Result<(), String> {
 
     let out = serde_yaml::to_string(&root).map_err(|e| e.to_string())?;
     std::fs::write(&path, out).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_tunnel_definitions() -> Result<HashMap<String, TunnelEntry>, String> {
+    let path = tunnel_definitions_path();
+    if !path.exists() {
+        return Ok(HashMap::new());
+    }
+    let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    if content.trim().is_empty() {
+        return Ok(HashMap::new());
+    }
+    serde_json::from_str(&content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn update_tunnel_definitions(tunnels: HashMap<String, TunnelEntry>) -> Result<(), String> {
+    if resolve_ngrok_executable().is_none() {
+        return Err("ngrok is not installed. Install it first.".to_string());
+    }
+    let token = authtoken_from_settings().ok_or_else(|| {
+        "ngrok authtoken is missing. Please set it in Settings first.".to_string()
+    })?;
+    if token.trim().is_empty() {
+        return Err("ngrok authtoken is missing. Please set it in Settings first.".to_string());
+    }
+
+    let path = tunnel_definitions_path();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let content = serde_json::to_string_pretty(&tunnels).map_err(|e| e.to_string())?;
+    std::fs::write(&path, content).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -464,7 +527,47 @@ fn start_ngrok(state: State<NgrokProcess>) -> Result<(), String> {
         return Err("ngrok authtoken is missing. Please set it in Settings first.".to_string());
     }
 
-    ensure_ngrok_config_exists()?;
+    // Guard: no enabled tunnels → block start
+    let settings = read_settings();
+    let enabled: std::collections::HashSet<String> =
+        settings.enabled_tunnels.iter().cloned().collect();
+
+    if enabled.is_empty() {
+        return Err(
+            "No tunnels are enabled. Enable at least one tunnel before starting.".to_string(),
+        );
+    }
+
+    // Generate ngrok.yml from enabled tunnel definitions only
+    let definitions = get_tunnel_definitions()?;
+    let active_tunnels: HashMap<String, TunnelEntry> = definitions
+        .into_iter()
+        .filter(|(name, _)| enabled.contains(name))
+        .collect();
+
+    if active_tunnels.is_empty() {
+        return Err(
+            "No enabled tunnels found in definitions. Add and enable at least one tunnel."
+                .to_string(),
+        );
+    }
+
+    // Write the generated ngrok.yml
+    {
+        let path = ngrok_config_path();
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        let tunnels_value = serde_yaml::to_value(&active_tunnels).map_err(|e| e.to_string())?;
+        let mut map = serde_yaml::Mapping::new();
+        map.insert(
+            YamlValue::String("version".to_string()),
+            YamlValue::String("3".to_string()),
+        );
+        map.insert(YamlValue::String("tunnels".to_string()), tunnels_value);
+        let out = serde_yaml::to_string(&YamlValue::Mapping(map)).map_err(|e| e.to_string())?;
+        std::fs::write(&path, out).map_err(|e| e.to_string())?;
+    }
 
     // Prevent ngrok from immediately exiting when there are no tunnels configured.
     let ngrok_cfg_path = ngrok_config_path();
@@ -514,14 +617,10 @@ fn stop_ngrok(state: State<NgrokProcess>) -> Result<(), String> {
     if let Some(mut child) = proc.take() {
         child.kill().map_err(|e| e.to_string())?;
 
-        // Avoid race conditions with ngrok single-agent-session limits.
-        // Give the process a moment to fully exit before we allow a restart.
-        for _ in 0..15 {
-            if let Ok(Some(_)) = child.try_wait() {
-                break;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(100));
-        }
+        // Reap the process so it doesn't become a zombie on Unix.
+        // wait() blocks until the kernel confirms the process is fully gone,
+        // which also eliminates the race condition with ngrok's single-agent-session limit.
+        child.wait().ok();
     }
     Ok(())
 }
@@ -532,7 +631,10 @@ fn ngrok_status(state: State<NgrokProcess>) -> bool {
     if let Some(child) = proc.as_mut() {
         match child.try_wait() {
             Ok(None) => true,
-            Ok(Some(_)) => { *proc = None; false }
+            Ok(Some(_)) => {
+                *proc = None;
+                false
+            }
             Err(_) => false,
         }
     } else {
@@ -593,7 +695,8 @@ pub fn run() {
                         button: MouseButton::Left,
                         button_state: MouseButtonState::Up,
                         ..
-                    } = event {
+                    } = event
+                    {
                         let app = tray.app_handle();
                         if let Some(win) = app.get_webview_window("main") {
                             let _ = win.show();
@@ -617,6 +720,8 @@ pub fn run() {
             write_settings,
             read_tunnels,
             update_tunnels,
+            get_tunnel_definitions,
+            update_tunnel_definitions,
             start_ngrok,
             stop_ngrok,
             ngrok_status,

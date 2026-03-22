@@ -7,9 +7,10 @@ interface Props {
   running: boolean;
   disabled: boolean;
   onCopy: (publicUrl: string) => void;
+  onOpen: (publicUrl: string) => void;
 }
 
-export default function DashboardActiveTunnelsCard({ items, copiedUrl, running, disabled, onCopy }: Props) {
+export default function DashboardActiveTunnelsCard({ items, copiedUrl, running, disabled, onCopy, onOpen }: Props) {
   return (
     <div className="bg-secondary border border-border rounded-md p-5 mb-2.5">
       <div className="flex items-center justify-between mb-3 border-b border-border pb-3">
@@ -25,7 +26,7 @@ export default function DashboardActiveTunnelsCard({ items, copiedUrl, running, 
             copiedUrl={copiedUrl}
             disabled={disabled}
             onCopy={onCopy}
-            onOpen={() => window.open(item.publicUrl, "_blank", "noopener,noreferrer")}
+            onOpen={onOpen}
           />
         ))}
       </div>
