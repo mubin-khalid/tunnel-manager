@@ -86,9 +86,11 @@ scripts/              # sync-version.mjs (keeps package.json/Cargo.toml in sync)
 
 ## Versioning
 
-Version is the single source of truth in `package.json`. The `prebuild` script
-syncs it to `Cargo.toml` and `tauri.conf.json` automatically. Never manually
-edit the version in those files.
+Version is the single source of truth in `package.json`. After you bump it,
+run `pnpm prebuild` (or `node scripts/sync-version.mjs`) so `src-tauri/Cargo.toml`
+and `src-tauri/tauri.conf.json` stay in sync. The `prebuild` hook runs before
+`pnpm build`, so a normal frontend build updates them too. Do not hand-edit
+version lines in `Cargo.toml` or `tauri.conf.json`.
 
 ---
 
@@ -98,7 +100,7 @@ edit the version in those files.
 | Platform            | Status                    |
 | ------------------- | ------------------------- |
 | macOS (arm64 + x64) | ✅ Supported               |
-| Linux (AppImage)    | ✅ Supported               |
+| Linux (deb / rpm / AppImage) | ✅ Supported        |
 | Windows             | ❌ Not currently supported |
 
 

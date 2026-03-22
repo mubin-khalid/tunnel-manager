@@ -101,7 +101,7 @@ tunnels:
 |----------|--------|-------|
 | macOS (arm64) | ✅ Supported | Primary target |
 | macOS (x64) | ✅ Supported | |
-| Linux (AppImage) | ✅ Supported | |
+| Linux (deb / rpm / AppImage) | ✅ Supported | |
 | Windows | ❌ Not supported | Binary resolver and process management rely on Unix conventions |
 
 ## Installation
