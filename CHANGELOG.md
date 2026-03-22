@@ -10,17 +10,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Tunnel enable/disable toggle with free-plan 3-tunnel limit enforcement
+- CONTRIBUTING.md, CODE_OF_CONDUCT.md, issue and PR templates
 - Per-tunnel enable/disable toggle with active counter (`X / Y enabled`)
 - Free plan guard: blocks enabling a 4th tunnel with a tooltip warning
 - `tunnel-definitions.json` as the source of truth for tunnel definitions
 - Auto-migration of existing `ngrok.yml` tunnels on first launch (all enabled by default)
 
 ### Changed
+- CI restructured to 3-workflow pattern (draft release → DMG + AppImage builds)
+- Tunnel definitions now stored separately from generated ngrok.yml
 - `ngrok.yml` is now generated at start time from enabled tunnels only
 - Dashboard empty state now reflects enabled tunnels, not total defined
 - Start is blocked with an error message if no tunnels are enabled
 
 ### Fixed
+- Zombie process on Unix after stop_ngrok (child.wait() after kill)
+- StatusDot hardcoded colors replaced with CSS variables
 
 ### Removed
 
