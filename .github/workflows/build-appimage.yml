@@ -39,21 +39,3 @@ jobs:
         with:
           releaseId: ${{ github.event.release.id }}
           args: '--bundles appimage'
-```
-
----
-
-**What to delete:** remove `.github/workflows/dmg-release.yml` and `.github/workflows/appimage-release.yml` — they're fully replaced by the 3 new files above.
-
----
-
-**How the flow works now:**
-```
-push to main
-    → release.yml runs
-        → reads version from package.json
-        → extracts that version's section from CHANGELOG.md
-        → creates a DRAFT release with the changelog as the release body
-            → triggers build-dmg.yml   (2 matrix jobs, arm64 + x64)
-            → triggers build-appimage.yml
-                → both upload their artifacts to the same draft release
