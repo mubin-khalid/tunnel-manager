@@ -31,7 +31,7 @@ jobs:
           corepack enable
           pnpm install --frozen-lockfile
 
-      # Tauri v2 Linux deps (aligned with build-appimage.yml / ci rust job)
+      # Tauri v2 Linux deps — build uploads deb/rpm/appimage (bundle.targets in tauri.conf.json)
       - name: Install system dependencies
         run: |
           sudo apt-get update

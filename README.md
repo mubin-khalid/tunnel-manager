@@ -5,7 +5,6 @@
 ![Linux](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black)
 ![CI](https://img.shields.io/github/actions/workflow/status/mubin-khalid/tunnel-manager/ci.yml?label=CI&logo=github)
 ![Release](https://img.shields.io/github/actions/workflow/status/mubin-khalid/tunnel-manager/release.yml?branch=main&label=release&logo=github)
-![AppImage](https://img.shields.io/github/actions/workflow/status/mubin-khalid/tunnel-manager/build-appimage.yml?label=AppImage&logo=github)
 ![DMG](https://img.shields.io/github/actions/workflow/status/mubin-khalid/tunnel-manager/build-dmg.yml?label=DMG&logo=github)
 
 # Tunnel Manager
@@ -102,7 +101,7 @@ tunnels:
 |----------|--------|-------|
 | macOS (arm64) | ✅ Supported | Primary target |
 | macOS (x64) | ✅ Supported | |
-| Linux (AppImage) | ✅ Supported | |
+| Linux (deb / rpm / AppImage) | ✅ Supported | |
 | Windows | ❌ Not supported | Binary resolver and process management rely on Unix conventions |
 
 ## Installation

@@ -9,8 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.1] - 2026-03-23
-- Linux build
+## [0.2.2] - 2026-03-23
+
+### Fixed
+- Linux release and CI failing to compile `glib-sys` / `gobject-sys` (install full Tauri v2 Linux dependencies: `build-essential`, `pkg-config`, GTK/WebKit stack, OpenSSL, Ayatana appindicator, etc.)
+
+### Changed
+- **GitHub Actions:** `release.yml` (push to `main`) builds Linux bundles with `bundle.targets: "all"` and uploads **deb**, **rpm**, and **AppImage** to the draft release via `tauri-apps/tauri-action`
+- **README:** workflow badges for CI, Release (`release.yml`), and DMG (`build-dmg.yml`); removed separate AppImage badge that pointed at a redundant workflow
+
+### Removed
+- `.github/workflows/build-appimage.yml` (duplicate of the Linux artifacts already produced in `release.yml`)
 
 ## [0.2.0] - 2026-03-22
 
@@ -54,5 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/mubin-khalid/tunnel-manager/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/mubin-khalid/tunnel-manager/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/mubin-khalid/tunnel-manager/compare/v0.2.0...v0.2.2
+[0.2.0]: https://github.com/mubin-khalid/tunnel-manager/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/mubin-khalid/tunnel-manager/releases/tag/v0.1.1
