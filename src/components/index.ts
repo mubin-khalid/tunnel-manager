@@ -1,5 +1,7 @@
-// Central export surface for page-level composition.
-// Prefer importing from "@/components" in `src/pages/*`.
+/**
+ * Central export surface for page-level composition.
+ * Prefer importing from `@/components` in `src/pages/*`.
+ */
 
 export { default as ConfirmModal } from "@/components/ui/ConfirmModal";
 export { default as FormField } from "@/components/ui/FormField";
@@ -19,7 +21,7 @@ export { default as DashboardActiveTunnelsCard } from "@/components/dashboard/Da
 export { default as DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState";
 export { default as DashboardWaitingState } from "@/components/dashboard/DashboardWaitingState";
 export { default as DashboardAuthWarningCard } from "@/components/dashboard/DashboardAuthWarningCard";
-export type { DashboardTunnelViewModel } from "@/components/dashboard/DashboardTunnelRow";
+export type { DashboardTunnelViewModel } from "@/types/dashboard";
 
 // Settings
 export { default as SettingsHeader } from "@/components/settings/SettingsHeader";
@@ -27,4 +29,3 @@ export { default as SettingsErrorBanner } from "@/components/settings/SettingsEr
 export { default as AuthtokenCard } from "@/components/settings/AuthtokenCard";
 export { default as PreferencesCard } from "@/components/settings/PreferencesCard";
 export { default as SaveRow } from "@/components/settings/SaveRow";
-

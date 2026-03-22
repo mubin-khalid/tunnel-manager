@@ -1,12 +1,7 @@
-import React from "react";
+import type { FormFieldProps } from "@/types/component-props";
 
-interface Props {
-  label: string;
-  hint?: React.ReactNode;
-  children: React.ReactNode;
-}
-
-export default function FormField({ label, hint, children }: Props) {
+/** Label + optional hint wrapping arbitrary field children for consistent spacing. */
+export default function FormField({ label, hint, children }: FormFieldProps) {
   return (
     <div>
       <label className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground mb-1.5 block">
@@ -21,4 +16,3 @@ export default function FormField({ label, hint, children }: Props) {
     </div>
   );
 }
-

@@ -1,16 +1,8 @@
 import { Loader2, Play, StopCircle } from "lucide-react";
 import StatusDot from "@/components/ui/StatusDot";
+import type { DashboardControlBarProps } from "@/types/component-props";
 
-interface Props {
-  running: boolean;
-  loading: boolean;
-  ngrokInstalled: boolean;
-  hasAuthtoken: boolean;
-  tunnelCount: number;
-  onStart: () => void;
-  onStop: () => void;
-}
-
+/** Primary start/stop controls and status for the dashboard. */
 export default function DashboardControlBar({
   running,
   loading,
@@ -19,14 +11,23 @@ export default function DashboardControlBar({
   tunnelCount,
   onStart,
   onStop,
-}: Props) {
+}: DashboardControlBarProps) {
   return (
     <div className="flex items-center justify-between mb-5 bg-secondary border border-border rounded-md p-5">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
-          <StatusDot running={running} variant="row" className="w-2.5 h-2.5" title={running ? "Running" : "Stopped"} />
+          <StatusDot
+            running={running}
+            variant="row"
+            className="w-2.5 h-2.5"
+            title={running ? "Running" : "Stopped"}
+          />
           <span
-            className={running ? "font-mono text-[13px] font-medium text-primary" : "font-mono text-[13px] font-medium text-muted-foreground"}
+            className={
+              running
+                ? "font-mono text-[13px] font-medium text-primary"
+                : "font-mono text-[13px] font-medium text-muted-foreground"
+            }
           >
             {running ? "Running" : "Stopped"}
           </span>
@@ -80,4 +81,3 @@ export default function DashboardControlBar({
     </div>
   );
 }
-

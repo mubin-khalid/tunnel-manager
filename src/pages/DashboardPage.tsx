@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import type { DashboardTunnel, TunnelEntry } from "@/types";
+import type {
+  DashboardTunnel,
+  DashboardTunnelViewModel,
+  TunnelEntry,
+} from "@/types";
 import {
   DashboardHeader,
   DashboardControlBar,
@@ -9,18 +13,14 @@ import {
   DashboardEmptyState,
   DashboardWaitingState,
   DashboardAuthWarningCard,
-  type DashboardTunnelViewModel,
 } from "@/components";
 import { toErrorString } from "@/utils/error";
 import { formatTunnelName, normalizeAddr, normalizeHost } from "@/utils/tunnel";
+import type { DashboardPageProps } from "@/types/pages";
 
-export type DashboardPageProps = {
-  running: boolean;
-  setRunning: (v: boolean) => void;
-  ngrokInstalled: boolean;
-  hasAuthtoken: boolean;
-};
+export type { DashboardPageProps };
 
+/** Polls the local ngrok API, shows public URLs, and controls the managed ngrok process. */
 export default function DashboardPage({
   running,
   setRunning,
@@ -28,7 +28,9 @@ export default function DashboardPage({
   hasAuthtoken,
 }: DashboardPageProps) {
   const [tunnels, setTunnels] = useState<DashboardTunnel[]>([]);
-  const [savedTunnels, setSavedTunnels] = useState<Record<string, TunnelEntry>>({});
+  const [savedTunnels, setSavedTunnels] = useState<Record<string, TunnelEntry>>(
+    {},
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
@@ -55,7 +57,7 @@ export default function DashboardPage({
       ]);
       const enabled = settings.enabled_tunnels ?? [];
       const enabledDefs = Object.fromEntries(
-        Object.entries(defs ?? {}).filter(([name]) => enabled.includes(name))
+        Object.entries(defs ?? {}).filter(([name]) => enabled.includes(name)),
       );
       setSavedTunnels(enabledDefs);
     } catch {
@@ -136,7 +138,9 @@ export default function DashboardPage({
       .filter(
         (t) =>
           t.proto === "https" ||
-          !tunnels.find((x) => x.proto === "https" && x.config.addr === t.config.addr)
+          !tunnels.find(
+            (x) => x.proto === "https" && x.config.addr === t.config.addr,
+          ),
       )
       .slice()
       .sort((a, b) => a.public_url.localeCompare(b.public_url));
@@ -184,10 +188,16 @@ export default function DashboardPage({
     <div className="w-full h-full p-8">
       <div className="max-w-3xl mx-auto">
         <DashboardHeader />
-        <DashboardAuthWarningCard ngrokInstalled={ngrokInstalled} hasAuthtoken={hasAuthtoken} />
+        <DashboardAuthWarningCard
+          ngrokInstalled={ngrokInstalled}
+          hasAuthtoken={hasAuthtoken}
+        />
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 text-danger rounded-md px-3.5 py-2.5 text-[13px] mb-4" role="alert">
+          <div
+            className="bg-red-500/10 border border-red-500/30 text-danger rounded-md px-3.5 py-2.5 text-[13px] mb-4"
+            role="alert"
+          >
             {error}
           </div>
         )}

@@ -1,15 +1,14 @@
-import type { TunnelEntry } from "@/types";
-import TunnelRow from "./TunnelRow";
+import TunnelRow from "@/components/tunnels/TunnelRow";
+import type { TunnelsListProps } from "@/types/component-props";
 
-interface Props {
-  tunnels: Record<string, TunnelEntry>;
-  disabled: boolean;
-  running: boolean;
-  onEdit: (name: string, entry: TunnelEntry) => void;
-  onDelete: (name: string) => void;
-}
-
-export default function TunnelsList({ tunnels, disabled, running, onEdit, onDelete }: Props) {
+/** Scrollable list of tunnel rows for the Tunnels page. */
+export default function TunnelsList({
+  tunnels,
+  disabled,
+  running,
+  onEdit,
+  onDelete,
+}: TunnelsListProps) {
   const entries = Object.entries(tunnels);
   const count = entries.length;
 
@@ -20,7 +19,10 @@ export default function TunnelsList({ tunnels, disabled, running, onEdit, onDele
           TUNNELS LIST
         </div>
         <div className="text-[12px] font-mono text-[#3a3a3a] shrink-0">
-          <span className="bg-primary/10 text-primary px-2 py-1 rounded-full">{count}</span> tunnel{count !== 1 ? "s" : ""}
+          <span className="bg-primary/10 text-primary px-2 py-1 rounded-full">
+            {count}
+          </span>{" "}
+          tunnel{count !== 1 ? "s" : ""}
         </div>
       </div>
 
@@ -40,4 +42,3 @@ export default function TunnelsList({ tunnels, disabled, running, onEdit, onDele
     </div>
   );
 }
-

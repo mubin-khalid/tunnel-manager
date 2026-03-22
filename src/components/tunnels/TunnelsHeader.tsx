@@ -1,15 +1,8 @@
 import { Check, Plus } from "lucide-react";
 import { useTunnels } from "@/contexts/TunnelContext";
+import type { TunnelsHeaderProps } from "@/types/component-props";
 
-interface Props {
-  showForm: boolean;
-  saved: boolean;
-  canEdit: boolean;
-  ngrokInstalled: boolean;
-  actionDisabled: boolean;
-  onAdd: () => void;
-}
-
+/** Tunnels page title row with add-tunnel and saved-state affordances. */
 export default function TunnelsHeader({
   showForm,
   saved,
@@ -17,7 +10,7 @@ export default function TunnelsHeader({
   ngrokInstalled,
   actionDisabled,
   onAdd,
-}: Props) {
+}: TunnelsHeaderProps) {
   const { enabledTunnels, definitions } = useTunnels();
   const totalCount = Object.keys(definitions).length;
   const enabledCount = enabledTunnels.filter((n) => n in definitions).length;
@@ -25,7 +18,9 @@ export default function TunnelsHeader({
   return (
     <div className="flex items-start justify-between mb-7">
       <div>
-        <h1 className="text-xl font-semibold text-foreground tracking-[-0.01em]">Tunnels</h1>
+        <h1 className="text-xl font-semibold text-foreground tracking-[-0.01em]">
+          Tunnels
+        </h1>
         <p className="text-[13px] text-muted-foreground mt-1">
           Configure tunnels written to{" "}
           <code className="font-mono text-[12px] bg-muted border border-border rounded px-1.5 py-px">
@@ -36,7 +31,9 @@ export default function TunnelsHeader({
         {totalCount > 0 && (
           <div className="flex items-center gap-3 mt-2">
             <span className="font-mono text-[12px] text-muted-foreground">
-              <span className="text-foreground font-medium">{enabledCount}</span>
+              <span className="text-foreground font-medium">
+                {enabledCount}
+              </span>
               <span> / {totalCount} enabled</span>
             </span>
             {enabledCount >= 3 && (

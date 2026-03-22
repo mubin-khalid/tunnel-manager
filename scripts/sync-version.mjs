@@ -31,7 +31,10 @@ await fs.writeFile(cargoTomlPath, cargoUpdated, "utf8");
 // Update tauri.conf.json version
 const tauriConf = JSON.parse(await fs.readFile(tauriConfPath, "utf8"));
 tauriConf.version = version;
-await fs.writeFile(tauriConfPath, JSON.stringify(tauriConf, null, 2) + "\n", "utf8");
+await fs.writeFile(
+  tauriConfPath,
+  JSON.stringify(tauriConf, null, 2) + "\n",
+  "utf8",
+);
 
 console.log(`Synced version -> ${version}`);
-

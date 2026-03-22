@@ -1,18 +1,7 @@
-import React from "react";
 import { AlertTriangle } from "lucide-react";
+import type { ConfirmModalProps } from "@/types/component-props";
 
-interface Props {
-  open: boolean;
-  title: string;
-  message: React.ReactNode;
-  confirmText: string;
-  cancelText?: string;
-  danger?: boolean;
-  isLoading?: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}
-
+/** Accessible confirm/cancel dialog (e.g. destructive tunnel delete or restart). */
 export default function ConfirmModal({
   open,
   title,
@@ -23,7 +12,7 @@ export default function ConfirmModal({
   isLoading = false,
   onConfirm,
   onCancel,
-}: Props) {
+}: ConfirmModalProps) {
   if (!open) return null;
 
   return (
@@ -39,7 +28,9 @@ export default function ConfirmModal({
             {danger ? (
               <AlertTriangle size={18} className="text-danger shrink-0" />
             ) : null}
-            <div className="text-[14px] font-semibold text-foreground">{title}</div>
+            <div className="text-[14px] font-semibold text-foreground">
+              {title}
+            </div>
           </div>
           <div className="mt-2 text-[13px] text-muted-foreground leading-relaxed">
             {message}
@@ -71,4 +62,3 @@ export default function ConfirmModal({
     </div>
   );
 }
-

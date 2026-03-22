@@ -2,8 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { AppSettings } from "@/types";
 import { toErrorString } from "@/utils/error";
-import { AuthtokenCard, PreferencesCard, SaveRow, SettingsErrorBanner, SettingsHeader } from "@/components";
+import {
+  AuthtokenCard,
+  PreferencesCard,
+  SaveRow,
+  SettingsErrorBanner,
+  SettingsHeader,
+} from "@/components";
 
+/** Loads and saves authtoken, auto-start, and related preferences via Tauri. */
 export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings>({ auto_start: false });
   const [authtoken, setAuthtoken] = useState("");
@@ -70,7 +77,9 @@ export default function SettingsPage() {
 
         <PreferencesCard
           autoStart={settings.auto_start}
-          onToggle={() => setSettings({ ...settings, auto_start: !settings.auto_start })}
+          onToggle={() =>
+            setSettings({ ...settings, auto_start: !settings.auto_start })
+          }
         />
 
         <SaveRow saved={saved} saving={saving} onSave={handleSave} />
@@ -78,4 +87,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

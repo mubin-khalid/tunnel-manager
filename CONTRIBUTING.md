@@ -43,10 +43,12 @@ cd src-tauri && cargo check
 Run all of these and fix any issues:
 
 ```bash
+pnpm lint                         # ESLint
+pnpm test                         # Vitest + `cargo test` (see package.json)
 pnpm build                        # TypeScript + Vite build
 cd src-tauri &&
 cargo fmt --check &&              # Rust formatting
-cargo clippy &&                   # Rust lints
+cargo clippy -- -D warnings &&   # Rust lints
 cargo check                       # Rust compilation
 ```
 
@@ -75,12 +77,17 @@ src/                  # React frontend
   components/         # UI components grouped by domain
   pages/              # Page-level components (Dashboard, Tunnels, Settings)
   utils/              # Shared utilities
-  types/              # TypeScript types
+  types/              # TypeScript types (barrel: types/index.ts)
+  config/             # Build-time helpers (e.g. repository URL from package.json)
 src-tauri/            # Rust backend (Tauri)
   src/lib.rs          # All Tauri commands (process management, file I/O)
 .github/workflows/    # ci.yml (PRs); release.yml (push main → draft release + Linux + macOS DMGs)
-scripts/              # sync-version.mjs (keeps package.json/Cargo.toml in sync)
+scripts/              # sync-version.mjs, sync-repo-urls.mjs, repo-utils.mjs
 ```
+
+### Repository URL
+
+Do **not** hardcode `https://github.com/…` in React for first-party links. The canonical remote is `package.json` → `repository`; Vite injects `import.meta.env.VITE_REPOSITORY_URL`. After moving or forking the repository, update `repository` (and `bugs` / `homepage` if you use them), run `pnpm sync:repo` to refresh README badges and `CHANGELOG.md` footer links, then rebuild.
 
 ---
 
@@ -92,8 +99,9 @@ Version is the single source of truth in `package.json`. After you bump it:
    and `src-tauri/tauri.conf.json` match (the `prebuild` hook also runs before
    `pnpm build`). Do not hand-edit version lines in those files.
 2. Add a `## [x.y.z] - YYYY-MM-DD` section to `CHANGELOG.md` (move items out of
-   **`[Unreleased]`** when you cut the release) and update the compare links at
-   the bottom of that file.
+   **`[Unreleased]`** when you cut the release). For compare links at the bottom,
+   either run `pnpm sync:repo` (uses `package.json` `repository`) or update them
+   to match the new remote.
 
 Git tags for releases follow **`v` + semver** (for example `v0.2.3`), matching
 what `.github/workflows/release.yml` derives from `package.json`.

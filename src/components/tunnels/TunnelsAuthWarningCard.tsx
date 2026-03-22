@@ -1,10 +1,10 @@
 import { AlertTriangle } from "lucide-react";
+import type { TunnelsAuthWarningCardProps } from "@/types/component-props";
 
-interface Props {
-  ngrokInstalled: boolean;
-}
-
-export default function TunnelsAuthWarningCard({ ngrokInstalled }: Props) {
+/** Banner on the Tunnels page when ngrok is not installed or the token is missing. */
+export default function TunnelsAuthWarningCard({
+  ngrokInstalled,
+}: TunnelsAuthWarningCardProps) {
   return (
     <div className="bg-amber-500/10 border border-amber-500/30 text-warning rounded-md px-3.5 py-2.5 text-[13px] mb-4">
       {!ngrokInstalled ? (
@@ -21,4 +21,3 @@ export default function TunnelsAuthWarningCard({ ngrokInstalled }: Props) {
     </div>
   );
 }
-

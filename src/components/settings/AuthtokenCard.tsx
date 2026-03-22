@@ -1,27 +1,25 @@
 import { useId } from "react";
 
+import type { AuthtokenCardProps } from "@/types/component-props";
+
 const inputClass =
   "w-full bg-muted border border-border text-foreground font-mono text-[13px] rounded-md px-3 py-2 outline-none transition-colors duration-150 focus:border-primary placeholder:text-muted-foreground/40 min-h-[40px]";
 
-interface Props {
-  showToken: boolean;
-  onToggleShowToken: () => void;
-  authtoken: string;
-  onChangeAuthtoken: (v: string) => void;
-}
-
+/** Masked authtoken input with show/hide toggle. */
 export default function AuthtokenCard({
   showToken,
   onToggleShowToken,
   authtoken,
   onChangeAuthtoken,
-}: Props) {
+}: AuthtokenCardProps) {
   const id = useId();
 
   return (
     <div className="bg-secondary border border-border rounded-md mb-3">
       <div className="px-5 pt-5 pb-4">
-        <div className="text-[13px] font-semibold text-foreground">ngrok Authtoken</div>
+        <div className="text-[13px] font-semibold text-foreground">
+          ngrok Authtoken
+        </div>
         <p className="text-[12px] text-muted-foreground mt-0.5">
           Find your Authtoken at&nbsp;
           <a
@@ -36,7 +34,10 @@ export default function AuthtokenCard({
       </div>
       <div className="h-px bg-border" />
       <div className="px-5 pt-4 pb-5">
-        <label htmlFor={id} className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground mb-1.5 block">
+        <label
+          htmlFor={id}
+          className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground mb-1.5 block"
+        >
           Authtoken
         </label>
         <div className="flex gap-2 items-center">
@@ -60,4 +61,3 @@ export default function AuthtokenCard({
     </div>
   );
 }
-

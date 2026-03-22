@@ -1,17 +1,23 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { AlertTriangle, LayoutDashboard, Network, Settings as SettingsIcon } from "lucide-react";
+import {
+  AlertTriangle,
+  LayoutDashboard,
+  Network,
+  Settings as SettingsIcon,
+} from "lucide-react";
 import TunnelsPage from "@/pages/TunnelsPage";
 import DashboardPage from "@/pages/DashboardPage";
 import SettingsPage from "@/pages/SettingsPage";
 import StatusDot from "@/components/ui/StatusDot";
-import logoUrl from "../src-tauri/icons/32x32.png";
+import logoUrl from "@/../src-tauri/icons/32x32.png";
 import { TunnelProvider } from "@/contexts/TunnelContext";
+import type { AppView } from "@/types/navigation";
+import { repositoryReleasesUrl } from "@/config/repository";
 
-type View = "dashboard" | "tunnels" | "settings";
-
+/** Root shell: sidebar navigation, global ngrok status, and page content inside `TunnelProvider`. */
 export default function App() {
-  const [view, setView] = useState<View>("dashboard");
+  const [view, setView] = useState<AppView>("dashboard");
   const [ngrokInstalled, setNgrokInstalled] = useState<boolean | null>(null);
   const [hasAuthtoken, setHasAuthtoken] = useState(false);
   const [running, setRunning] = useState(false);
@@ -23,7 +29,9 @@ export default function App() {
   useEffect(() => {
     type AppSettings = { auto_start: boolean; authtoken?: string | null };
     invoke<AppSettings>("read_settings")
-      .then((s) => setHasAuthtoken(!!s.authtoken && s.authtoken.trim().length > 0))
+      .then((s) =>
+        setHasAuthtoken(!!s.authtoken && s.authtoken.trim().length > 0),
+      )
       .catch(() => setHasAuthtoken(false));
   }, []);
 
@@ -31,7 +39,9 @@ export default function App() {
     if (view !== "tunnels" && view !== "dashboard") return;
     type AppSettings = { auto_start: boolean; authtoken?: string | null };
     invoke<AppSettings>("read_settings")
-      .then((s) => setHasAuthtoken(!!s.authtoken && s.authtoken.trim().length > 0))
+      .then((s) =>
+        setHasAuthtoken(!!s.authtoken && s.authtoken.trim().length > 0),
+      )
       .catch(() => setHasAuthtoken(false));
   }, [view]);
 
@@ -50,18 +60,30 @@ export default function App() {
         <aside className="w-sidebar min-w-sidebar bg-secondary border-r border-border flex flex-col pt-10">
           <div className="flex items-center justify-between px-4 pb-6">
             <div className="flex items-center gap-2">
-              <img src={logoUrl} alt="Tunnel Manager logo" className="w-5 h-5" />
-              <span className="font-mono text-[15px] font-semibold tracking-wide text-foreground">Tunnel Manager</span>
+              <img
+                src={logoUrl}
+                alt="Tunnel Manager logo"
+                className="w-5 h-5"
+              />
+              <span className="font-mono text-[15px] font-semibold tracking-wide text-foreground">
+                Tunnel Manager
+              </span>
             </div>
-            <StatusDot running={running} variant="sidebar" title={running ? "Running" : "Stopped"} />
+            <StatusDot
+              running={running}
+              variant="sidebar"
+              title={running ? "Running" : "Stopped"}
+            />
           </div>
 
           <nav className="flex flex-col gap-0.5 px-2 flex-1">
-            {([
-              { id: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
-              { id: "tunnels", label: "Tunnels", Icon: Network },
-              { id: "settings", label: "Settings", Icon: SettingsIcon },
-            ] as { id: View; label: string; Icon: typeof LayoutDashboard }[]).map((item) => (
+            {(
+              [
+                { id: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
+                { id: "tunnels", label: "Tunnels", Icon: Network },
+                { id: "settings", label: "Settings", Icon: SettingsIcon },
+              ] as { id: AppView; label: string; Icon: typeof LayoutDashboard }[]
+            ).map((item) => (
               <button
                 key={item.id}
                 className={[
@@ -72,10 +94,12 @@ export default function App() {
                 ].join(" ")}
                 onClick={() => setView(item.id)}
               >
-                <span className={[
-                  "w-[18px] text-center text-[15px]",
-                  view === item.id ? "text-primary" : "",
-                ].join(" ")}>
+                <span
+                  className={[
+                    "w-[18px] text-center text-[15px]",
+                    view === item.id ? "text-primary" : "",
+                  ].join(" ")}
+                >
                   <item.Icon size={16} />
                 </span>
                 <span>{item.label}</span>
@@ -100,12 +124,12 @@ export default function App() {
             <div className="mt-auto text-[11px] font-mono text-muted-foreground/70">
               App Version:{" "}
               <a
-                href="https://github.com/mubin-khalid/tunnel-manager/releases"
+                href={repositoryReleasesUrl()}
                 target="_blank"
                 rel="noreferrer"
                 className="font-medium hover:underline"
               >
-                v-0.1.1
+                v-{import.meta.env.VITE_APP_VERSION}
               </a>
             </div>
           </div>

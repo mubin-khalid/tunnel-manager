@@ -4,6 +4,7 @@
 ![macOS](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple)
 ![Linux](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black)
 ![CI](https://img.shields.io/github/actions/workflow/status/mubin-khalid/tunnel-manager/ci.yml?label=CI&logo=github)
+![Tests](https://img.shields.io/github/actions/workflow/status/mubin-khalid/tunnel-manager/ci.yml?label=tests&logo=github)
 ![Release](https://img.shields.io/github/actions/workflow/status/mubin-khalid/tunnel-manager/release.yml?branch=main&label=release&logo=github)
 
 # Tunnel Manager
@@ -157,6 +158,20 @@ To force a specific binary:
 ```bash
 NGROK_PATH=/full/path/to/ngrok
 ```
+
+---
+
+## Repository URL (forks and org transfers)
+
+The **canonical Git remote** is `package.json` → [`repository`](https://docs.npmjs.com/cli/v9/configuring-npm/package-json#repository). The desktop app reads that value at build time (`VITE_REPOSITORY_URL`) for in-app links (for example the sidebar releases link).
+
+After **moving or forking** the repo, update `repository` (and optionally `bugs` / `homepage`), then run:
+
+```bash
+pnpm sync:repo
+```
+
+That refreshes workflow badge URLs in this README and compare links in `CHANGELOG.md`. Rebuild the app so the embedded repo URL matches.
 
 ---
 

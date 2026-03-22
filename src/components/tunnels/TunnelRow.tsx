@@ -1,24 +1,29 @@
 import { Pencil, Trash2 } from "lucide-react";
-import type { TunnelEntry } from "@/types";
 import StatusDot from "@/components/ui/StatusDot";
 import { useTunnels } from "@/contexts/TunnelContext";
-
-interface Props {
-  name: string;
-  entry: TunnelEntry;
-  disabled: boolean;
-  running: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
-}
+import type { TunnelRowProps } from "@/types/component-props";
 
 const protoStyles: Record<string, { badge: string; badgeText: string }> = {
   http: { badge: "bg-primary/10 border-primary/20", badgeText: "text-primary" },
-  tcp: { badge: "bg-amber-500/10 border-amber-500/20", badgeText: "text-amber-300" },
-  tls: { badge: "bg-violet-500/10 border-violet-500/20", badgeText: "text-violet-300" },
+  tcp: {
+    badge: "bg-amber-500/10 border-amber-500/20",
+    badgeText: "text-amber-300",
+  },
+  tls: {
+    badge: "bg-violet-500/10 border-violet-500/20",
+    badgeText: "text-violet-300",
+  },
 };
 
-export default function TunnelRow({ name, entry, disabled, running, onEdit, onDelete }: Props) {
+/** One saved tunnel: enable toggle, proto badge, edit/delete actions. */
+export default function TunnelRow({
+  name,
+  entry,
+  disabled,
+  running,
+  onEdit,
+  onDelete,
+}: TunnelRowProps) {
   const { enabledTunnels, toggleTunnel, definitions } = useTunnels();
   const proto = entry.proto?.toLowerCase() ?? "http";
   const styles = protoStyles[proto] ?? protoStyles.http;
@@ -39,7 +44,9 @@ export default function TunnelRow({ name, entry, disabled, running, onEdit, onDe
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="font-mono text-[13px] font-medium text-foreground truncate">{name}</span>
+            <span className="font-mono text-[13px] font-medium text-foreground truncate">
+              {name}
+            </span>
             <span
               className={[
                 "inline-flex items-center px-2 py-px rounded-[999px] font-mono text-[11px] font-medium border",
@@ -53,7 +60,9 @@ export default function TunnelRow({ name, entry, disabled, running, onEdit, onDe
 
           <div className="mt-2 font-mono text-[12px] text-muted-foreground flex items-center gap-2 min-w-0">
             {entry.host_header ? (
-              <span className="truncate">{entry.host_header} → {entry.addr}</span>
+              <span className="truncate">
+                {entry.host_header} → {entry.addr}
+              </span>
             ) : (
               <span className="truncate">{entry.addr}</span>
             )}
@@ -72,13 +81,15 @@ export default function TunnelRow({ name, entry, disabled, running, onEdit, onDe
             atLimit && !isEnabled
               ? "Free plan: max 3 active tunnels"
               : isEnabled
-              ? "Disable tunnel"
-              : "Enable tunnel"
+                ? "Disable tunnel"
+                : "Enable tunnel"
           }
           className={[
             "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
             isEnabled ? "bg-primary" : "bg-border2",
-            disabled || (atLimit && !isEnabled) ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
+            disabled || (atLimit && !isEnabled)
+              ? "opacity-50 cursor-not-allowed"
+              : "cursor-pointer",
           ].join(" ")}
         >
           <span

@@ -1,20 +1,21 @@
-import type { DashboardTunnelViewModel } from "@/components/dashboard/DashboardTunnelRow";
 import DashboardTunnelRow from "@/components/dashboard/DashboardTunnelRow";
+import type { DashboardActiveTunnelsCardProps } from "@/types/component-props";
 
-interface Props {
-  items: DashboardTunnelViewModel[];
-  copiedUrl: string | null;
-  running: boolean;
-  disabled: boolean;
-  onCopy: (publicUrl: string) => void;
-  onOpen: (publicUrl: string) => void;
-}
-
-export default function DashboardActiveTunnelsCard({ items, copiedUrl, running, disabled, onCopy, onOpen }: Props) {
+/** Card listing active tunnels returned from the ngrok local API. */
+export default function DashboardActiveTunnelsCard({
+  items,
+  copiedUrl,
+  running,
+  disabled,
+  onCopy,
+  onOpen,
+}: DashboardActiveTunnelsCardProps) {
   return (
     <div className="bg-secondary border border-border rounded-md p-5 mb-2.5">
       <div className="flex items-center justify-between mb-3 border-b border-border pb-3">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#484848]">ACTIVE TUNNELS</div>
+        <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#484848]">
+          ACTIVE TUNNELS
+        </div>
       </div>
 
       <div className="divide-y divide-border">
@@ -33,4 +34,3 @@ export default function DashboardActiveTunnelsCard({ items, copiedUrl, running, 
     </div>
   );
 }
-

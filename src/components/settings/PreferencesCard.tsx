@@ -1,19 +1,21 @@
-interface Props {
-  autoStart: boolean;
-  onToggle: () => void;
-}
+import type { PreferencesCardProps } from "@/types/component-props";
 
-export default function PreferencesCard({ autoStart, onToggle }: Props) {
+/** Auto-start ngrok when the app launches. */
+export default function PreferencesCard({ autoStart, onToggle }: PreferencesCardProps) {
   return (
     <div className="bg-secondary border border-border rounded-md mb-4">
       <div className="px-5 pt-5 pb-4">
-        <div className="text-[13px] font-semibold text-foreground">Preferences</div>
+        <div className="text-[13px] font-semibold text-foreground">
+          Preferences
+        </div>
       </div>
       <div className="h-px bg-border" />
       <div className="px-5 py-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1">
-            <span className="text-[13px] text-foreground block mb-0.5">Auto-start ngrok on launch</span>
+            <span className="text-[13px] text-foreground block mb-0.5">
+              Auto-start ngrok on launch
+            </span>
             <span className="text-[12px] text-muted-foreground">
               Automatically run{" "}
               <code className="font-mono text-[11px] bg-muted border border-border rounded px-1.5 py-px">
@@ -44,4 +46,3 @@ export default function PreferencesCard({ autoStart, onToggle }: Props) {
     </div>
   );
 }
-

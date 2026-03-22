@@ -1,0 +1,22 @@
+dist
+node_modules
+pnpm-lock.yaml
+src-tauri/target
+src-tauri/gen
+coverage
+*.min.js
+
+# Docs and automation templates — use `pnpm format` for TS/CSS/config only
+.github/
+.coderabbit.yaml
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+README.md
+
+# Explicit scope — everything else is handled by the format script
+CHANGELOG.md
+LICENSE
+rustfmt.toml
+src-tauri/Cargo.toml
+src-tauri/Cargo.lock
+src-tauri/src/

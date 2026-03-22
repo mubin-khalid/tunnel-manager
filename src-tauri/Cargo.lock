@@ -4706,7 +4706,7 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "tunnel-manager"
-version = "0.1.1"
+version = "0.2.4"
 dependencies = [
  "dirs 5.0.1",
  "reqwest 0.11.27",

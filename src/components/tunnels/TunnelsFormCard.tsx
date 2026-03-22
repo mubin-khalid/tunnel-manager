@@ -1,4 +1,6 @@
 import FormField from "@/components/ui/FormField";
+import type { TunnelsFormCardProps } from "@/types/component-props";
+import type { TunnelFormState } from "@/types/tunnel-form";
 
 const baseControlClass =
   "w-full bg-muted border border-border text-foreground font-mono text-[13px] rounded-md px-3 py-2 outline-none transition-colors duration-150 focus:border-primary placeholder:text-muted-foreground/40 min-h-[40px]";
@@ -9,23 +11,7 @@ const inputClass = baseControlClass;
 // same padding/font. Force a min height and line-height to align.
 const selectClass = `${baseControlClass} leading-none appearance-none min-h-[40px]`;
 
-type FormState = { name: string; proto: string; addr: string; host_header: string };
-
-type FieldErrors = Partial<Record<keyof FormState, boolean>>;
-
-interface Props {
-  showForm: boolean;
-  editingName: string | null;
-  form: FormState;
-  error: string;
-  fieldErrors: FieldErrors;
-  saving: boolean;
-  actionDisabled: boolean;
-  onChange: (next: FormState) => void;
-  onCancel: () => void;
-  onSubmit: () => void;
-}
-
+/** Add/edit tunnel form: name, proto, addr, optional host header. */
 export default function TunnelsFormCard({
   showForm,
   editingName,
@@ -37,11 +23,12 @@ export default function TunnelsFormCard({
   onChange,
   onCancel,
   onSubmit,
-}: Props) {
+}: TunnelsFormCardProps) {
   if (!showForm) return null;
 
-  const setField = (patch: Partial<FormState>) => onChange({ ...form, ...patch });
-  const hasFieldError = (key: keyof FormState) => !!fieldErrors[key];
+  const setField = (patch: Partial<TunnelFormState>) =>
+    onChange({ ...form, ...patch });
+  const hasFieldError = (key: keyof TunnelFormState) => !!fieldErrors[key];
 
   return (
     <div className="bg-secondary border border-border rounded-md mb-4">
@@ -129,4 +116,3 @@ export default function TunnelsFormCard({
     </div>
   );
 }
-

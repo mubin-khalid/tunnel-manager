@@ -1,12 +1,8 @@
 import { Check } from "lucide-react";
+import type { SaveRowProps } from "@/types/component-props";
 
-interface Props {
-  saved: boolean;
-  saving: boolean;
-  onSave: () => void;
-}
-
-export default function SaveRow({ saved, saving, onSave }: Props) {
+/** Save button with transient “saved” feedback. */
+export default function SaveRow({ saved, saving, onSave }: SaveRowProps) {
   return (
     <div className="flex items-center justify-end gap-3">
       {saved && (
@@ -26,4 +22,3 @@ export default function SaveRow({ saved, saving, onSave }: Props) {
     </div>
   );
 }
-

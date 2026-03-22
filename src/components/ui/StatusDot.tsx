@@ -1,18 +1,12 @@
-type StatusDotVariant = "sidebar" | "row";
+import type { StatusDotProps } from "@/types/component-props";
 
-interface Props {
-  running: boolean;
-  variant: StatusDotVariant;
-  className?: string;
-  title?: string;
-}
-
+/** Small traffic-light indicator for whether ngrok is running (sidebar or table row). */
 export default function StatusDot({
   running,
   variant,
   className,
   title,
-}: Props) {
+}: StatusDotProps) {
   const base =
     variant === "sidebar"
       ? "size-2 rounded-full transition-colors"

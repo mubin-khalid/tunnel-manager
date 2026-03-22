@@ -7,15 +7,17 @@ import {
   TunnelsList,
 } from "@/components";
 import { useTunnelForm } from "@/hooks/useTunnelForm";
+import type { TunnelsPageProps } from "@/types/pages";
 
-export type TunnelsPageProps = {
-  ngrokInstalled: boolean;
-  hasAuthtoken: boolean;
-  running: boolean;
-  setRunning: (v: boolean) => void;
-};
+export type { TunnelsPageProps };
 
-export default function TunnelsPage({ ngrokInstalled, hasAuthtoken, running, setRunning }: TunnelsPageProps) {
+/** Lists tunnel definitions, enable toggles, and add/edit form with restart confirmation when ngrok is running. */
+export default function TunnelsPage({
+  ngrokInstalled,
+  hasAuthtoken,
+  running,
+  setRunning,
+}: TunnelsPageProps) {
   const {
     definitions,
     form,
@@ -51,7 +53,9 @@ export default function TunnelsPage({ ngrokInstalled, hasAuthtoken, running, set
           actionDisabled={actionDisabled}
           onAdd={handleAdd}
         />
-        {!canEdit && !showForm ? <TunnelsAuthWarningCard ngrokInstalled={ngrokInstalled} /> : null}
+        {!canEdit && !showForm ? (
+          <TunnelsAuthWarningCard ngrokInstalled={ngrokInstalled} />
+        ) : null}
 
         <TunnelsFormCard
           showForm={showForm}
@@ -84,9 +88,16 @@ export default function TunnelsPage({ ngrokInstalled, hasAuthtoken, running, set
           title="Restart ngrok required"
           message={
             pendingHasTunnels ? (
-              <>ngrok is currently running. Updating tunnels requires restarting ngrok, which will restart all tunnels.</>
+              <>
+                ngrok is currently running. Updating tunnels requires restarting
+                ngrok, which will restart all tunnels.
+              </>
             ) : (
-              <>ngrok is currently running. Updating tunnels requires restarting ngrok, and since there will be no tunnels configured after this change, ngrok will be stopped.</>
+              <>
+                ngrok is currently running. Updating tunnels requires restarting
+                ngrok, and since there will be no tunnels configured after this
+                change, ngrok will be stopped.
+              </>
             )
           }
           confirmText="Restart ngrok"

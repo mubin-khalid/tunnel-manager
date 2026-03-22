@@ -1,3 +1,5 @@
+//! Tunnel Manager Tauri backend: ngrok process lifecycle, config on disk, and commands for the UI.
+
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value as YamlValue;
 use std::collections::HashMap;
@@ -41,6 +43,7 @@ pub struct TunnelEntry {
 }
 
 impl Default for NgrokConfig {
+    /// Builds an empty v3 config with no tunnels and an empty agent token placeholder.
     fn default() -> Self {
         NgrokConfig {
             version: "3".to_string(),
@@ -78,6 +81,7 @@ pub struct NgrokApiResponse {
     pub tunnels: Vec<NgrokTunnelAddr>,
 }
 
+/// Returns the path to the generated `ngrok.yml` passed to the ngrok CLI (`--config`).
 fn ngrok_config_path() -> std::path::PathBuf {
     // Store ngrok config (tunnels) under the same root as ngrok-manager settings.
     // We also pass `--config` to ngrok when starting, so ngrok uses this file.
@@ -85,6 +89,7 @@ fn ngrok_config_path() -> std::path::PathBuf {
     home.join(".config").join("ngrok-manager").join("ngrok.yml")
 }
 
+/// Returns the path to `tunnel-definitions.json` (authoritative tunnel list from the UI).
 fn tunnel_definitions_path() -> std::path::PathBuf {
     let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
     home.join(".config")
@@ -92,6 +97,7 @@ fn tunnel_definitions_path() -> std::path::PathBuf {
         .join("tunnel-definitions.json")
 }
 
+/// Returns whether `path` is a regular file with any execute bit set (Unix), or exists (elsewhere).
 fn is_executable(path: &std::path::Path) -> bool {
     if !path.is_file() {
         return false;
@@ -109,6 +115,7 @@ fn is_executable(path: &std::path::Path) -> bool {
     true
 }
 
+/// Locates the `ngrok` binary: `NGROK_PATH`, `PATH`, then common install directories.
 fn resolve_ngrok_executable() -> Option<std::path::PathBuf> {
     // Allow explicit override.
     if let Ok(p) = std::env::var("NGROK_PATH") {
@@ -142,6 +149,7 @@ fn resolve_ngrok_executable() -> Option<std::path::PathBuf> {
     candidates.into_iter().find(|p| is_executable(p))
 }
 
+/// Terminates any running `ngrok` processes so a new agent can start (single-agent limit).
 fn kill_any_existing_ngrok_processes() -> Result<(), String> {
     // If there is an existing ngrok agent running outside of our managed process state,
     // ngrok may reject new agents with ERR_NGROK_108 (single concurrent agent limit).
@@ -181,6 +189,7 @@ fn kill_any_existing_ngrok_processes() -> Result<(), String> {
     Ok(())
 }
 
+/// Returns `~/.config/ngrok-manager/settings.json` (app preferences and authtoken).
 fn app_settings_path() -> std::path::PathBuf {
     // Store ngrok-manager settings under `~/.config/ngrok-manager/settings.json`
     // (dirs::config_dir() differs on macOS and may point to `~/Library/...`).
@@ -190,6 +199,7 @@ fn app_settings_path() -> std::path::PathBuf {
         .join("settings.json")
 }
 
+/// Previous settings location under `dirs::config_dir()`; used only for one-time migration.
 fn legacy_app_settings_path() -> std::path::PathBuf {
     dirs::config_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
@@ -197,6 +207,7 @@ fn legacy_app_settings_path() -> std::path::PathBuf {
         .join("settings.json")
 }
 
+/// Legacy ngrok v2-style config path under the platform config directory.
 fn legacy_ngrok_config_path() -> std::path::PathBuf {
     dirs::config_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
@@ -204,6 +215,7 @@ fn legacy_ngrok_config_path() -> std::path::PathBuf {
         .join("ngrok.yml")
 }
 
+/// Moves settings and tunnel data from legacy paths and strips tokens from old `ngrok.yml` files.
 fn migrate_settings_and_cleanup() -> Result<(), String> {
     // 1) Move settings.json from legacy location to the desired one.
     let old_settings = legacy_app_settings_path();
@@ -334,6 +346,7 @@ fn migrate_settings_and_cleanup() -> Result<(), String> {
     Ok(())
 }
 
+/// Ensures `ngrok.yml` exists and is non-empty with a minimal valid v3 skeleton.
 fn ensure_ngrok_config_exists() -> Result<(), String> {
     let path = ngrok_config_path();
     let ngrok_dir = path
@@ -356,6 +369,7 @@ fn ensure_ngrok_config_exists() -> Result<(), String> {
     Ok(())
 }
 
+/// Returns the trimmed authtoken from settings, or `None` if missing or blank.
 fn authtoken_from_settings() -> Option<String> {
     let settings = read_settings();
     settings
@@ -373,11 +387,13 @@ struct NgrokYamlConfig {
     tunnels: HashMap<String, TunnelEntry>,
 }
 
+/// Returns whether a usable `ngrok` executable was found on this system.
 #[tauri::command]
 fn check_ngrok_installed() -> bool {
     resolve_ngrok_executable().is_some()
 }
 
+/// Loads app settings from disk, or returns defaults if the file is missing or invalid.
 #[tauri::command]
 fn read_settings() -> AppSettings {
     let path = app_settings_path();
@@ -388,6 +404,7 @@ fn read_settings() -> AppSettings {
     serde_json::from_str(&content).unwrap_or_default()
 }
 
+/// Persists app settings (authtoken, auto-start, enabled tunnel names) to disk.
 #[tauri::command]
 fn write_settings(settings: AppSettings) -> Result<(), String> {
     let path = app_settings_path();
@@ -398,6 +415,9 @@ fn write_settings(settings: AppSettings) -> Result<(), String> {
     std::fs::write(&path, content).map_err(|e| e.to_string())
 }
 
+/// Legacy: reads tunnel entries from `ngrok.yml` (migration path); errors in YAML yield an empty map.
+/// Prefer [`get_tunnel_definitions`] for new code.
+// TODO: remove once migration path is confirmed complete.
 #[tauri::command]
 fn read_tunnels() -> Result<HashMap<String, TunnelEntry>, String> {
     ensure_ngrok_config_exists()?;
@@ -417,6 +437,7 @@ fn read_tunnels() -> Result<HashMap<String, TunnelEntry>, String> {
     Ok(parsed.tunnels)
 }
 
+/// Legacy: writes the `tunnels` map into `ngrok.yml` while preserving YAML structure where possible.
 #[tauri::command]
 fn update_tunnels(tunnels: HashMap<String, TunnelEntry>) -> Result<(), String> {
     // Backend enforcement: don't allow tunnel edits without ngrok and a token.
@@ -474,6 +495,7 @@ fn update_tunnels(tunnels: HashMap<String, TunnelEntry>) -> Result<(), String> {
     std::fs::write(&path, out).map_err(|e| e.to_string())
 }
 
+/// Reads the canonical tunnel definitions JSON edited from the Tunnels UI.
 #[tauri::command]
 fn get_tunnel_definitions() -> Result<HashMap<String, TunnelEntry>, String> {
     let path = tunnel_definitions_path();
@@ -487,6 +509,7 @@ fn get_tunnel_definitions() -> Result<HashMap<String, TunnelEntry>, String> {
     serde_json::from_str(&content).map_err(|e| e.to_string())
 }
 
+/// Saves tunnel definitions to JSON after validating ngrok is installed and an authtoken is set.
 #[tauri::command]
 fn update_tunnel_definitions(tunnels: HashMap<String, TunnelEntry>) -> Result<(), String> {
     if resolve_ngrok_executable().is_none() {
@@ -507,6 +530,7 @@ fn update_tunnel_definitions(tunnels: HashMap<String, TunnelEntry>) -> Result<()
     std::fs::write(&path, content).map_err(|e| e.to_string())
 }
 
+/// Spawns ngrok with enabled tunnel definitions, or returns an error if prerequisites are not met.
 #[tauri::command]
 fn start_ngrok(state: State<NgrokProcess>) -> Result<(), String> {
     let mut proc = state.0.lock().map_err(|e| e.to_string())?;
@@ -611,6 +635,7 @@ fn start_ngrok(state: State<NgrokProcess>) -> Result<(), String> {
     Ok(())
 }
 
+/// Stops the managed ngrok child process and waits so it is reaped (avoids zombies on Unix).
 #[tauri::command]
 fn stop_ngrok(state: State<NgrokProcess>) -> Result<(), String> {
     let mut proc = state.0.lock().map_err(|e| e.to_string())?;
@@ -625,9 +650,12 @@ fn stop_ngrok(state: State<NgrokProcess>) -> Result<(), String> {
     Ok(())
 }
 
+/// Returns whether our managed ngrok process is still running (clears state if it has exited).
 #[tauri::command]
 fn ngrok_status(state: State<NgrokProcess>) -> bool {
-    let mut proc = state.0.lock().unwrap();
+    let Ok(mut proc) = state.0.lock() else {
+        return false;
+    };
     if let Some(child) = proc.as_mut() {
         match child.try_wait() {
             Ok(None) => true,
@@ -642,6 +670,7 @@ fn ngrok_status(state: State<NgrokProcess>) -> bool {
     }
 }
 
+/// Fetches active tunnels from the local ngrok API (`localhost:4040`), or an empty list if down.
 #[tauri::command]
 async fn fetch_running_tunnels() -> Result<Vec<NgrokTunnelAddr>, String> {
     let client = reqwest::Client::new();
@@ -663,6 +692,7 @@ async fn fetch_running_tunnels() -> Result<Vec<NgrokTunnelAddr>, String> {
     Ok(data.tunnels)
 }
 
+/// Builds the Tauri app, registers IPC commands, tray menu, and optional autostart of ngrok.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -729,4 +759,12 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    include!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../tests/rust/lib_tests.rs"
+    ));
 }

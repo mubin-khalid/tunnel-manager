@@ -1,5 +1,6 @@
 import { Repeat } from "lucide-react";
 
+/** Empty state when there are no tunnel definitions yet. */
 export default function TunnelsEmptyState() {
   return (
     <div className="text-center py-16 px-5 text-muted-foreground">
@@ -11,4 +12,3 @@ export default function TunnelsEmptyState() {
     </div>
   );
 }
-
