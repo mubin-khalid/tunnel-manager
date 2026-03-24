@@ -11,7 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **GitHub Actions:** `release.yml` runs on **`release: created`** (not `push` to `main`). Linux and macOS builds upload assets to the **existing** GitHub Release; routine merges no longer touch release state. The workflow verifies `package.json` `version` matches the release tag.
+- **README:** table of contents; configuration docs for `settings.json`, `tunnel-definitions.json`, and generated `ngrok.yml`; features and “how it works” aligned with enable/disable tunnels
+- **GitHub Actions:** `release.yml` runs on **`release: created`** (not `push` to `main`). Linux and macOS builds upload assets to the **existing** GitHub Release; routine merges no longer touch release state. The workflow verifies the release tag matches `package.json` **and** that `src-tauri/Cargo.toml` / `src-tauri/tauri.conf.json` versions match `package.json` (avoids bundles showing the wrong semver)
+
+### Fixed
+
+- Keep `Cargo.toml` and `tauri.conf.json` in sync with `package.json` via `pnpm prebuild` / `sync-version.mjs` so release artifacts match the intended tag
 
 ## [0.2.4] - 2026-03-22
 

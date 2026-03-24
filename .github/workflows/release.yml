@@ -29,6 +29,17 @@ jobs:
             exit 1
           fi
 
+      - name: Verify Cargo.toml and tauri.conf.json match package.json
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          CARGO_VER=$(grep -E '^version\s*=' src-tauri/Cargo.toml | head -1 | sed -E 's/^version\s*=\s*"([^"]+)".*/\1/')
+          TAURI_VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          if [ "$PKG" != "$CARGO_VER" ] || [ "$PKG" != "$TAURI_VER" ]; then
+            echo "::error::Version mismatch: package.json=$PKG, src-tauri/Cargo.toml=$CARGO_VER, src-tauri/tauri.conf.json=$TAURI_VER"
+            echo "Run \`pnpm prebuild\` (or \`node scripts/sync-version.mjs\`) and commit \`Cargo.toml\` + \`tauri.conf.json\` before creating the release tag."
+            exit 1
+          fi
+
   build-linux:
     name: Build Linux bundles
     needs: verify-release

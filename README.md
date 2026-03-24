@@ -11,6 +11,29 @@
 
 A lightweight desktop app (Tauri + React) for managing `ngrok` tunnels from a clean UI — no more memorizing config paths or authtoken flags.
 
+## Table of contents
+
+- [Why you need this](#why-you-need-this)
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [How it works](#how-it-works)
+- [Requirements](#requirements)
+- [Configuration](#configuration)
+  - [Data layout](#data-layout)
+  - [`settings.json`](#settingsjson)
+  - [`tunnel-definitions.json`](#tunnel-definitionsjson)
+  - [`ngrok.yml` (generated)](#ngrok-yml-generated)
+- [Platform support](#platform-support)
+- [Installation](#installation)
+- [Troubleshooting macOS quarantine](#troubleshooting-macos-quarantine)
+- [Usage](#usage)
+- [Customization](#customization)
+  - [ngrok binary resolution](#ngrok-binary-resolution)
+- [Release builds and version numbers](#release-builds-and-version-numbers)
+- [Repository URL (forks and org transfers)](#repository-url-forks-and-org-transfers)
+- [Development](#development)
+- [Contributing](#contributing)
+
 ---
 
 ## Why you need this
@@ -21,10 +44,10 @@ If you regularly run ngrok for local development, the repetitive parts are usual
 - remembering where your `ngrok.yml` lives
 - passing your authtoken and starting/stopping tunnels consistently
 
-Tunnel Manager wraps those steps in a simple UI and stores settings under your user config directory.
+Tunnel Manager wraps those steps in a simple UI and stores data under `~/.config/ngrok-manager/`.
 
 > [!TIP]
-> Free-plan friendly: define multiple tunnels and start them together in one click, so you can bring up several endpoints at the same time (within whatever concurrency your ngrok plan allows).
+> Free-plan friendly: define multiple tunnels, choose which are **enabled**, and start them together in one click (within whatever concurrency your ngrok plan allows).
 
 ---
 
@@ -33,22 +56,39 @@ Tunnel Manager wraps those steps in a simple UI and stores settings under your u
 | Feature | Description |
 |---|---|
 | **Dashboard** | Start/stop `ngrok` and view active tunnels |
-| **Tunnels** | Add, edit, and delete tunnel definitions from the UI |
+| **Tunnels** | Add, edit, and delete tunnel definitions; toggle which tunnels are enabled for the next start |
 | **Settings** | Save your `ngrok` authtoken and optionally auto-start on launch |
 
 ---
+
 ## Screenshots
 
-<!-- TODO: add after feat/tunnel-enable-disable is merged -->
+UI previews are in **`docs/screenshots/`** (documentation only; not shipped in the app bundle).
+
+<details>
+<summary><strong>View screenshots</strong></summary>
+
+![Dashboard — start/stop and active tunnels](docs/screenshots/dashboard.png)
+
+![Tunnels — definitions and enable toggles](docs/screenshots/tunnels.png)
+
+![Settings — authtoken and preferences](docs/screenshots/settings.png)
+
+</details>
+
+---
 
 ## How it works
 
-When you click **Start ngrok**, the app runs:
+- **Tunnel definitions** you edit in the app are stored in **`tunnel-definitions.json`**.
+- **Enabled tunnel names** and preferences live in **`settings.json`**.
+- When you click **Start ngrok**, the app writes a fresh **`ngrok.yml`** that contains only **enabled** tunnels, then runs:
+
 ```bash
 ngrok start --all --authtoken <token> --config <path-to-ngrok.yml> --log stderr --log-level error
 ```
 
-When you stop, it kills the running `ngrok` child process.
+When you stop, it kills the managed `ngrok` child process.
 
 ---
 
@@ -62,27 +102,53 @@ When you stop, it kills the running `ngrok` child process.
 
 ## Configuration
 
-Tunnel Manager stores config in:
-```
-~/.config/ngrok-manager/settings.json   # app preferences
-~/.config/ngrok-manager/ngrok.yml       # tunnel definitions
-```
+All paths below use `~/.config/ngrok-manager/` on macOS and Linux (see [XDG](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html) for Linux conventions).
 
-### `settings.json`
+### Data layout
+
+| File | Role |
+|------|------|
+| **`settings.json`** | Authtoken, auto-start, and the list of **enabled** tunnel names |
+| **`tunnel-definitions.json`** | **Source of truth** for tunnel definitions (name → proto, addr, optional `host_header`) |
+| **`ngrok.yml`** | **Generated** when you start ngrok — only enabled tunnels; do not treat this as the place to edit tunnels long-term |
+
+Legacy installs may be migrated from older paths on first launch; new data always lands in the layout above.
+
+### settings.json
 
 | Key | Type | Description |
 |---|---|---|
 | `auto_start` | boolean | Start ngrok automatically when the app launches |
-| `authtoken` | string | Your ngrok authtoken (optional) |
+| `authtoken` | string (optional) | Your ngrok authtoken |
+| `enabled_tunnels` | string[] | Names of tunnels to include the next time ngrok starts (must exist in `tunnel-definitions.json`) |
 
 > [!WARNING]
-> The `authtoken` is stored as plaintext in `settings.json`. Treat this file
-> like a password — do not commit it, share it, or expose it in logs.
-> On macOS, ensure the file permissions are restricted (`chmod 600 ~/.config/ngrok-manager/settings.json`).
+> The `authtoken` is stored as plaintext in `settings.json`. Treat this file like a password — do not commit it, share it, or expose it in logs. On macOS, restrict permissions (`chmod 600 ~/.config/ngrok-manager/settings.json`).
 
-### `ngrok.yml`
+### tunnel-definitions.json
 
-The app expects ngrok v3 style YAML:
+JSON object: tunnel name → `{ "proto": "http" \| "tcp" \| "tls", "addr": "...", "host_header"?: "..." }`.
+
+Example:
+
+```json
+{
+  "web": {
+    "proto": "http",
+    "addr": "http://localhost:3000"
+  },
+  "api": {
+    "proto": "http",
+    "addr": "4000",
+    "host_header": "api.local"
+  }
+}
+```
+
+### ngrok.yml (generated)
+
+When ngrok starts, the app writes ngrok v3–style YAML for **enabled** tunnels only:
+
 ```yaml
 version: "3"
 tunnels:
@@ -91,11 +157,11 @@ tunnels:
     proto: http
 ```
 
-> Supported `proto` values: `http`, `tcp`, `tls`. `host_header` is optional.
+Supported `proto` values: `http`, `tcp`, `tls`. `host_header` is optional when present on the definition.
 
 ---
 
-## Platform Support
+## Platform support
 
 | Platform | Status | Notes |
 |----------|--------|-------|
@@ -104,11 +170,13 @@ tunnels:
 | Linux (deb / rpm / AppImage) | ✅ Supported | |
 | Windows | ❌ Not supported | Binary resolver and process management rely on Unix conventions |
 
+---
+
 ## Installation
 
 **Option A — Packaged build**
 
-Download the DMG from Releases and open it like any other macOS app.
+Download the DMG (macOS) or Linux bundle from [Releases](https://github.com/mubin-khalid/tunnel-manager/releases) and install like any other app for your platform.
 
 > [!CAUTION]
 > If macOS shows *“Tunnel Manager can’t be opened because Apple cannot check it for malware” or "App is damaged" etc* (Gatekeeper quarantine), remove the quarantine attribute and try again.
@@ -118,13 +186,15 @@ Download the DMG from Releases and open it like any other macOS app.
 > ```
 
 **Option B — Build locally**
+
 ```bash
 pnpm tauri dev       # development
 pnpm tauri build     # produce macOS bundles (including DMG)
 ```
 
 ---
-### Troubleshooting macOS quarantine
+
+## Troubleshooting macOS quarantine
 
 If macOS blocks the app with Gatekeeper quarantine errors, run:
 
@@ -135,11 +205,12 @@ xattr -dr com.apple.quarantine "/Applications/Tunnel Manager.app"
 If your `.app` is located somewhere else (or has a different name), update the path accordingly.
 
 ---
+
 ## Usage
 
 1. Open the app
 2. Go to **Settings** → paste your `ngrok` authtoken
-3. Go to **Tunnels** → add your tunnel definitions
+3. Go to **Tunnels** → add tunnel definitions and enable the ones you want
 4. Go to **Dashboard** → click **Start ngrok**
 
 ---
@@ -155,9 +226,29 @@ On macOS, apps launched from Finder may not inherit your shell `PATH`. Tunnel Ma
 3. Common Homebrew locations (`/usr/local/bin/ngrok`, `/opt/homebrew/bin/ngrok`)
 
 To force a specific binary:
+
 ```bash
 NGROK_PATH=/full/path/to/ngrok
 ```
+
+---
+
+## Release builds and version numbers
+
+The **display / semver source of truth** is `package.json` → `"version"`.
+
+Tauri also reads **`src-tauri/Cargo.toml`** and **`src-tauri/tauri.conf.json`**. Those **must match** `package.json` or installers and the in-app version string can disagree (for example DMG shows `0.2.4` while the tag is `v0.2.5`).
+
+After bumping `package.json`:
+
+```bash
+pnpm prebuild
+# or: node scripts/sync-version.mjs
+```
+
+Then **commit** the updated `Cargo.toml` and `tauri.conf.json` **before** you create the release tag.
+
+The **release** workflow checks that all three versions match the tag; if they drift, the job fails with instructions to run `pnpm prebuild` and commit.
 
 ---
 
@@ -176,8 +267,10 @@ That refreshes workflow badge URLs in this README and compare links in `CHANGELO
 ---
 
 ## Development
+
 ```bash
 pnpm tauri dev        # start frontend + Tauri dev backend
+pnpm lint && pnpm test   # ESLint + Vitest + Rust unit tests (same idea as CI)
 pnpm build            # build frontend only
 pnpm tauri build      # produce release bundles
 cd src-tauri && cargo check  # verify Rust backend compiles
@@ -192,9 +285,10 @@ When submitting a PR:
 - Keep scope focused — one logical change per PR
 - Include a clear description of what changed and why
 - For UI changes, attach a screenshot or reproduction steps
-- Before opening, run `pnpm build` and `pnpm tauri build` (or `cargo check` if bundling isn't practical)
+- Before opening, run `pnpm lint`, `pnpm test`, and `pnpm build` (and `pnpm tauri build` or `cargo check` when practical)
 
 **PR description should cover:**
+
 - What changed
 - Why it changed
 - How to test

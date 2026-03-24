@@ -96,8 +96,11 @@ Do **not** hardcode `https://github.com/…` in React for first-party links. The
 Version is the single source of truth in `package.json`. After you bump it:
 
 1. Run `pnpm prebuild` or `node scripts/sync-version.mjs` so `src-tauri/Cargo.toml`
-   and `src-tauri/tauri.conf.json` match (the `prebuild` hook also runs before
-   `pnpm build`). Do not hand-edit version lines in those files.
+   and `src-tauri/tauri.conf.json` match `package.json` (the `prebuild` hook also
+   runs before `pnpm build`). **Commit those two files** with the version bump.
+   If only `package.json` changes, release builds and the app can still show the
+   old semver until the next sync. The release workflow fails if the three
+   versions disagree.
 2. Add a `## [x.y.z] - YYYY-MM-DD` section to `CHANGELOG.md` (move items out of
    **`[Unreleased]`** when you cut the release). For compare links at the bottom,
    either run `pnpm sync:repo` (uses `package.json` `repository`) or update them
