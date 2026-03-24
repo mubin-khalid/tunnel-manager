@@ -51,6 +51,20 @@ jobs:
           corepack enable
           pnpm install --frozen-lockfile
 
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Prefetch Cargo crates with retries
+        run: |
+          for i in 1 2 3 4 5; do
+            cargo fetch --manifest-path src-tauri/Cargo.toml && break
+            echo "cargo fetch failed (attempt $i), retrying in 15s..."
+            sleep 15
+          done
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -72,6 +86,7 @@ jobs:
         with:
           releaseId: ${{ github.event.release.id }}
           tagName: ${{ github.event.release.tag_name }}
+          retryAttempts: 3
 
   build-dmg:
     name: Build macOS DMG
@@ -100,10 +115,21 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
       - name: Install frontend dependencies
         run: |
           corepack enable
           pnpm install --frozen-lockfile
+
+      - name: Prefetch Cargo crates with retries
+        run: |
+          for i in 1 2 3 4 5; do
+            cargo fetch --manifest-path src-tauri/Cargo.toml --target ${{ matrix.target }} && break
+            echo "cargo fetch failed (attempt $i), retrying in 15s..."
+            sleep 15
+          done
 
       - name: Build and upload DMG
         uses: tauri-apps/tauri-action@action-v0.6.2
@@ -113,3 +139,4 @@ jobs:
           releaseId: ${{ github.event.release.id }}
           tagName: ${{ github.event.release.tag_name }}
           args: '--bundles dmg --target ${{ matrix.target }}'
+          retryAttempts: 3
